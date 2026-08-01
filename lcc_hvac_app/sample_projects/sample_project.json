@@ -1,0 +1,61 @@
+{
+  "project_info": {
+    "project_name": "AHU Filter LCC 2026",
+    "customer": "Factory A",
+    "location": "Binh Duong",
+    "engineer": "Air Filtech/LCC",
+    "date": "2026-07-07",
+    "currency": "VND"
+  },
+  "assumptions": {
+    "airflow_m3_h_per_ahu": 20000.0,
+    "number_of_ahu": 1,
+    "operating_hours_day": 24.0,
+    "operating_days_year": 365.0,
+    "fan_efficiency": 0.6,
+    "electricity_price_vnd_kwh": 2500.0,
+    "dust_concentration_mg_m3": 0.3,
+    "environment_factor": 1.0,
+    "labor_cost_vnd_filter_change": 50000.0,
+    "disposal_cost_vnd_filter_change": 20000.0,
+    "downtime_cost_vnd_change": 0.0,
+    "co2_emission_factor_kg_kwh": 0.85,
+    "analysis_period_years": 5
+  },
+  "scenarios": [
+    {
+      "name": "Base / Current",
+      "stages": [
+        {"stage": "Pre-filter", "qty_per_ahu": 8, "dhc_g": 450, "mass_efficiency": 0.55, "avg_dp_pa": 75, "price_vnd_filter": 110000},
+        {"stage": "Fine-filter", "qty_per_ahu": 8, "dhc_g": 650, "mass_efficiency": 0.85, "avg_dp_pa": 120, "price_vnd_filter": 260000},
+        {"stage": "HEPA", "qty_per_ahu": 4, "dhc_g": 900, "mass_efficiency": 0.99, "avg_dp_pa": 220, "price_vnd_filter": 950000}
+      ]
+    },
+    {
+      "name": "Option 1",
+      "stages": [
+        {"stage": "Pre-filter", "qty_per_ahu": 8, "dhc_g": 700, "mass_efficiency": 0.6, "avg_dp_pa": 60, "price_vnd_filter": 150000},
+        {"stage": "Fine-filter", "qty_per_ahu": 8, "dhc_g": 900, "mass_efficiency": 0.9, "avg_dp_pa": 95, "price_vnd_filter": 330000},
+        {"stage": "HEPA", "qty_per_ahu": 4, "dhc_g": 1000, "mass_efficiency": 0.99, "avg_dp_pa": 180, "price_vnd_filter": 1050000}
+      ]
+    },
+    {
+      "name": "Option 2",
+      "stages": [
+        {"stage": "Pre-filter", "qty_per_ahu": 8, "dhc_g": 600, "mass_efficiency": 0.55, "avg_dp_pa": 65, "price_vnd_filter": 135000},
+        {"stage": "Fine-filter", "qty_per_ahu": 8, "dhc_g": 1100, "mass_efficiency": 0.88, "avg_dp_pa": 90, "price_vnd_filter": 390000},
+        {"stage": "HEPA", "qty_per_ahu": 4, "dhc_g": 1100, "mass_efficiency": 0.995, "avg_dp_pa": 175, "price_vnd_filter": 1150000}
+      ]
+    },
+    {
+      "name": "Option 3",
+      "stages": [
+        {"stage": "Pre-filter", "qty_per_ahu": 8, "dhc_g": 650, "mass_efficiency": 0.6, "avg_dp_pa": 70, "price_vnd_filter": 145000},
+        {"stage": "Fine-filter", "qty_per_ahu": 8, "dhc_g": 950, "mass_efficiency": 0.9, "avg_dp_pa": 100, "price_vnd_filter": 350000},
+        {"stage": "HEPA", "qty_per_ahu": 4, "dhc_g": 1200, "mass_efficiency": 0.995, "avg_dp_pa": 170, "price_vnd_filter": 1250000}
+      ]
+    }
+  ],
+  "calculation_results": {},
+  "formula_version": "1.0.0"
+}

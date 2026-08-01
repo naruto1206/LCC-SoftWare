@@ -1,0 +1,31 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.python/
+.uv-cache/
+.repo.git/
+venv/
+env/
+
+# Local app/runtime files
+dist/
+*.log
+*.rar
+*.zip
+*.png
+*.jpg
+!Logo AIR FILTECH_FA-01.jpg
+!lcc_hvac_app/Logo AIR FILTECH_FA-01.jpg
+
+# Local source/reference files not needed by Streamlit Cloud
+hello.py
+LCC-HVAC Filter System 2026-Rev-01.xlsx
+LCC_HVAC_Filter_Software_Tong_Hop.md
+
+# OS/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

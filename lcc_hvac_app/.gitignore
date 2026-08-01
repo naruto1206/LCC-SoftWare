@@ -1,0 +1,9 @@
+.venv/
+.python/
+.uv-cache/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.streamlit/
+*.xlsx
+!sample_projects/*.json

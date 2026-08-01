@@ -1,0 +1,37 @@
+from lcc_hvac_app.engine.models import FilterDatabaseRecord
+from lcc_hvac_app.project_io.filter_database_store import (
+    load_filter_database,
+    save_filter_database,
+)
+
+
+def test_filter_database_csv_round_trip(tmp_path):
+    output_path = tmp_path / "filter_database.csv"
+    records = [
+        FilterDatabaseRecord(
+            filter_id="TEST-001",
+            supplier="Air Filtech",
+            filter_type="Bag filter",
+            stage="Fine-filter",
+            model="Test model",
+            size="592x592x600",
+            filter_class="ISO ePM1 80%",
+            dhc_g=600,
+            initial_dp_pa=70,
+            avg_dp_pa=115,
+            final_dp_pa=250,
+            mass_efficiency=0.88,
+            price_vnd_filter=320000,
+            notes="Saved from app",
+        )
+    ]
+
+    save_filter_database(records, output_path)
+    loaded = load_filter_database(output_path)
+
+    assert len(loaded) == 1
+    assert loaded[0].filter_id == "TEST-001"
+    assert loaded[0].stage == "Fine-filter"
+    assert loaded[0].dhc_g == 600
+    assert loaded[0].avg_dp_pa == 115
+    assert loaded[0].price_vnd_filter == 320000
