@@ -237,6 +237,15 @@ def remove_filter_database_rows(
     return normalize_display_dataframe(normalized.loc[keep_mask].reset_index(drop=True))
 
 
+def filter_record_ids(dataframe: pd.DataFrame) -> list[str]:
+    normalized = normalize_display_dataframe(dataframe)
+    return [
+        str(value).strip()
+        for value in normalized["Filter ID"].fillna("").tolist()
+        if str(value).strip()
+    ]
+
+
 def _option_index(options: list[str], value: Any) -> int:
     text = str(value or "").strip()
     return options.index(text) if text in options else 0
@@ -274,11 +283,7 @@ def _missing_filter_record_fields(row: dict[str, Any]) -> list[str]:
 
 
 def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
-    filter_ids = [
-        str(value).strip()
-        for value in current_df["Filter ID"].fillna("").tolist()
-        if str(value).strip()
-    ]
+    filter_ids = filter_record_ids(current_df)
     selected_existing = st.selectbox(
         "Edit existing filter",
         ["Create new filter"] + filter_ids,
@@ -520,11 +525,7 @@ def dataframe_to_excel_bytes(dataframe: pd.DataFrame) -> bytes:
 
 
 def render_filter_record_delete_tools(saved_df: pd.DataFrame) -> pd.DataFrame:
-    filter_ids = [
-        str(value).strip()
-        for value in saved_df["Filter ID"].fillna("").tolist()
-        if str(value).strip()
-    ]
+    filter_ids = filter_record_ids(saved_df)
     if not filter_ids:
         return saved_df
 
@@ -552,6 +553,26 @@ def render_filter_record_delete_tools(saved_df: pd.DataFrame) -> pd.DataFrame:
             st.success(f"Deleted {len(selected_ids)} filter record(s).")
             st.rerun()
     return saved_df
+
+
+def render_filter_record_edit_tools(saved_df: pd.DataFrame) -> None:
+    filter_ids = filter_record_ids(saved_df)
+    if not filter_ids:
+        return
+
+    with st.expander("Modify a row from Filter Records", expanded=False):
+        selected_id = st.selectbox(
+            "Select a Filter ID to modify",
+            filter_ids,
+            help="Choose a table row, then load it into the form above for editing.",
+            key="filter_record_row_to_modify",
+        )
+        action_col, note_col = st.columns([1, 2])
+        if action_col.button("Edit selected row", use_container_width=True):
+            st.session_state.filter_record_to_edit = selected_id
+            st.success(f"{selected_id} loaded into the edit form above.")
+            st.rerun()
+        note_col.caption("After editing, press Save filter record to update the row.")
 
 
 def render_filter_database(records: list[FilterDatabaseRecord]) -> list[FilterDatabaseRecord]:
@@ -605,6 +626,7 @@ def render_filter_database(records: list[FilterDatabaseRecord]) -> list[FilterDa
     st.markdown("**Filter Records**")
     st.caption("Use the form above to add or edit filters. This table is for review and selection in Scenarios.")
     st.dataframe(saved_df, use_container_width=True, hide_index=True)
+    render_filter_record_edit_tools(saved_df)
     saved_df = render_filter_record_delete_tools(saved_df)
 
     col1, col2, col3 = st.columns(3)
