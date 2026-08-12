@@ -70,6 +70,14 @@ For a public browser link with Streamlit Community Cloud, use the root `streamli
 
 The online Filter Data page supports uploading an Excel filter database, editing records, and downloading an updated Excel file.
 
+## Vietnamese User Guide
+
+Detailed Vietnamese instructions are available here:
+
+```text
+../HUONG_DAN_SU_DUNG_LCC_HVAC_APP.md
+```
+
 ## Test
 
 ```bash
