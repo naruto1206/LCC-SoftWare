@@ -37,3 +37,36 @@ def test_compare_scenarios_calculates_saving_against_base():
     assert comparison["best_option"] == "Option 1"
     assert option_summary["saving_vs_base"] > 0
     assert option_summary["saving_percent"] > 0
+
+
+def test_tco_engine_matches_excel_tco_model_option_1_sample():
+    assumptions = Assumptions(
+        airflow_m3_h_per_ahu=20000,
+        number_of_ahu=1,
+        operating_hours_day=24,
+        operating_days_year=365,
+        fan_efficiency=0.65,
+        electricity_price_vnd_kwh=3000,
+        dust_concentration_mg_m3=0.15,
+        environment_factor=1,
+        labor_cost_vnd_filter_change=100000,
+        disposal_cost_vnd_filter_change=20000,
+        downtime_cost_vnd_change=0,
+        co2_emission_factor_kg_kwh=0.6766,
+        analysis_period_years=5,
+    )
+    scenario = Scenario(
+        "Excel Option 1",
+        [
+            FilterStage("Pre-filter", 20, 600, 0.7, 85, 250000),
+            FilterStage("Fine-filter", 20, 350, 0.75, 110, 1500000),
+            FilterStage("HEPA", 20, 500, 0.95, 350, 3800000),
+        ],
+    )
+
+    result = calculate_scenario_tco(scenario, assumptions)
+
+    assert result["summary"]["filter_cost_year"] == 47_237_048.571428575
+    assert result["summary"]["energy_cost_year"] == 122_415_384.61538461
+    assert result["summary"]["labor_disposal_cost_year"] == 6_155_902.285714285
+    assert result["summary"]["tco_year"] == 175_808_335.47252747

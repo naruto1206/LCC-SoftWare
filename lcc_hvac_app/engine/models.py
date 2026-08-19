@@ -59,6 +59,7 @@ class FilterDatabaseRecord:
     model: str = ""
     size: str = ""
     filter_class: str = ""
+    qty_per_ahu: float = 1.0
     dhc_g: float = 0.0
     initial_dp_pa: float = 0.0
     avg_dp_pa: float = 0.0
@@ -106,6 +107,7 @@ def default_filter_database() -> list[FilterDatabaseRecord]:
             model="Pre-filter sample",
             size="592x592x46",
             filter_class="G4 / ISO Coarse",
+            qty_per_ahu=8,
             dhc_g=450,
             initial_dp_pa=45,
             avg_dp_pa=75,
@@ -121,6 +123,7 @@ def default_filter_database() -> list[FilterDatabaseRecord]:
             model="Fine-filter sample",
             size="592x592x600",
             filter_class="F8 / ePM1",
+            qty_per_ahu=8,
             dhc_g=650,
             initial_dp_pa=80,
             avg_dp_pa=120,
@@ -136,6 +139,7 @@ def default_filter_database() -> list[FilterDatabaseRecord]:
             model="HEPA sample",
             size="610x610x292",
             filter_class="H13",
+            qty_per_ahu=4,
             dhc_g=900,
             initial_dp_pa=140,
             avg_dp_pa=220,

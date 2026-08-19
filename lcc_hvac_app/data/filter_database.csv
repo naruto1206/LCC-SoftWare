@@ -1,5 +1,5 @@
-﻿filter_id,supplier,filter_type,stage,model,size,filter_class,dhc_g,initial_dp_pa,avg_dp_pa,final_dp_pa,mass_efficiency,price_vnd_filter,notes
-PF-001,Air Filtech,Panel filter,Pre-filter,Pre-filter sample,592x592x46,G4 / ISO Coarse,450.0,45.0,75.0,150.0,0.55,110000.0,
-FF-001,Air Filtech,Bag filter,Fine-filter,Fine-filter sample,592x592x600,F8 / ePM1,650.0,80.0,120.0,250.0,0.85,260000.0,
-HEPA-001,Air Filtech,HEPA filter,HEPA,HEPA sample,610x610x292,H13,900.0,140.0,220.0,450.0,0.99,950000.0,
-PF-002,Air Filtech,HEPA,HEPA,HEPA sample,592x592x600,H13,900.0,140.0,220.0,450.0,0.99,1000000.0,
+filter_id,supplier,filter_type,stage,model,size,filter_class,qty_per_ahu,dhc_g,initial_dp_pa,avg_dp_pa,final_dp_pa,mass_efficiency,price_vnd_filter,notes
+PF-001,Air Filtech,Panel filter,Pre-filter,Pre-filter sample,592x592x46,G4 / ISO Coarse,8.0,450.0,45.0,75.0,150.0,0.55,110000.0,
+FF-001,Air Filtech,Bag filter,Fine-filter,Fine-filter sample,592x592x600,F8 / ePM1,8.0,650.0,80.0,120.0,250.0,0.85,260000.0,
+HEPA-001,Air Filtech,HEPA filter,HEPA,HEPA sample,610x610x292,H13,4.0,900.0,140.0,220.0,450.0,0.99,950000.0,
+PF-002,Air Filtech,HEPA,HEPA,HEPA sample,592x592x600,H13,4.0,900.0,140.0,220.0,450.0,0.99,1000000.0,

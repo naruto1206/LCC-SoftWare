@@ -119,6 +119,7 @@ def _apply_filter_record_to_session(
 ) -> None:
     field_values = {
         "stage": record.stage,
+        "qty_per_ahu": record.qty_per_ahu,
         "dhc_g": record.dhc_g,
         "mass_efficiency": record.mass_efficiency,
         "avg_dp_pa": record.avg_dp_pa,
@@ -294,12 +295,13 @@ def render_scenario_editor(
                 st.caption(
                     "Selected filter values are loaded into the inputs below. You can still adjust any parameter for this scenario."
                 )
-                info_cols = st.columns(5)
+                info_cols = st.columns(6)
                 info_cols[0].metric("Model", selected_record.model or "-")
                 info_cols[1].metric("ISO Class", selected_record.filter_class or "-")
-                info_cols[2].metric("DHC", f"{selected_record.dhc_g:,.0f} g")
-                info_cols[3].metric("Avg DP", f"{selected_record.avg_dp_pa:,.0f} Pa")
-                info_cols[4].metric("Price", f"{selected_record.price_vnd_filter:,.0f}")
+                info_cols[2].metric("Qty/AHU", f"{selected_record.qty_per_ahu:,.0f}")
+                info_cols[3].metric("DHC", f"{selected_record.dhc_g:,.0f} g")
+                info_cols[4].metric("Avg DP", f"{selected_record.avg_dp_pa:,.0f} Pa")
+                info_cols[5].metric("Price", f"{selected_record.price_vnd_filter:,.0f}")
                 if st.button(
                     "Reload parameters from selected filter",
                     key=_field_key(scenario.name, index, "apply_filter", key_prefix),

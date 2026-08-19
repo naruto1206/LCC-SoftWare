@@ -17,6 +17,7 @@ FILTER_DATABASE_FIELDS = [
     "model",
     "size",
     "filter_class",
+    "qty_per_ahu",
     "dhc_g",
     "initial_dp_pa",
     "avg_dp_pa",
@@ -27,6 +28,7 @@ FILTER_DATABASE_FIELDS = [
 ]
 
 NUMBER_FIELDS = {
+    "qty_per_ahu",
     "dhc_g",
     "initial_dp_pa",
     "avg_dp_pa",
@@ -58,6 +60,8 @@ def load_filter_database(
         for row in reader:
             if not any(str(row.get(field, "")).strip() for field in FILTER_DATABASE_FIELDS):
                 continue
+            if not str(row.get("qty_per_ahu", "") or "").strip():
+                row["qty_per_ahu"] = "1"
             normalized = {
                 field: _to_float(row.get(field, 0))
                 if field in NUMBER_FIELDS

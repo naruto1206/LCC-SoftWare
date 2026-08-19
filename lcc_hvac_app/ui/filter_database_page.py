@@ -18,6 +18,7 @@ DATABASE_COLUMNS = [
     "model",
     "size",
     "filter_class",
+    "qty_per_ahu",
     "dhc_g",
     "initial_dp_pa",
     "avg_dp_pa",
@@ -35,6 +36,7 @@ DISPLAY_COLUMNS = {
     "model": "Model",
     "size": "Size",
     "filter_class": "ISO Class",
+    "qty_per_ahu": "Qty/AHU",
     "dhc_g": "DHC (g)",
     "initial_dp_pa": "Initial DP (Pa)",
     "avg_dp_pa": "Avg DP (Pa)",
@@ -96,18 +98,37 @@ ISO_CLASS_OPTIONS = [
 
 COLUMN_ALIASES = {
     "filter_id": ["filter id", "id", "code", "filter code", "product code"],
-    "supplier": ["supplier", "brand", "manufacturer", "maker"],
+    "supplier": ["supplier", "supplier/brand", "brand", "manufacturer", "maker"],
     "filter_type": ["filter type", "type", "product type"],
     "stage": ["stage", "filter stage", "level"],
     "model": ["model", "filter model", "product", "item"],
     "size": ["size", "dimension", "dimensions"],
     "filter_class": ["class", "grade", "filter class", "en class", "iso class", "ISO Class"],
-    "dhc_g": ["dhc", "dhc (g)", "dust holding capacity", "dust holding capacity (g)"],
+    "qty_per_ahu": ["qty/ahu", "qty ahu", "quantity/ahu", "quantity per ahu", "qty per ahu"],
+    "dhc_g": [
+        "dhc",
+        "dhc (g)",
+        "dhc to final dp (g)",
+        "dust holding capacity",
+        "dust holding capacity (g)",
+    ],
     "initial_dp_pa": ["initial dp", "initial dp (pa)", "initial pressure drop"],
-    "avg_dp_pa": ["avg dp", "avg dp (pa)", "average dp", "average pressure drop"],
+    "avg_dp_pa": [
+        "avg dp",
+        "avg dp (pa)",
+        "average dp",
+        "average pressure drop",
+        "eurovent avg dp (pa)",
+    ],
     "final_dp_pa": ["final dp", "final dp (pa)", "final pressure drop"],
     "mass_efficiency": ["mass efficiency", "mass eff.", "efficiency", "eff"],
-    "price_vnd_filter": ["price/filter", "price", "unit price", "filter price"],
+    "price_vnd_filter": [
+        "price/filter",
+        "price/filter (vnd)",
+        "price",
+        "unit price",
+        "filter price",
+    ],
     "notes": ["notes", "note", "remark", "remarks"],
 }
 
@@ -133,6 +154,7 @@ def empty_display_row() -> dict[str, Any]:
         if column
         in {
             "DHC (g)",
+            "Qty/AHU",
             "Initial DP (Pa)",
             "Avg DP (Pa)",
             "Final DP (Pa)",
@@ -263,6 +285,7 @@ def _missing_filter_record_fields(row: dict[str, Any]) -> list[str]:
         "ISO Class",
     ]
     required_positive_fields = [
+        "Qty/AHU",
         "DHC (g)",
         "Initial DP (Pa)",
         "Avg DP (Pa)",
@@ -341,22 +364,29 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             index=_option_index(ISO_CLASS_OPTIONS, _row_value(selected_row, "ISO Class")),
             key=f"iso_class_{form_key}",
         )
-        dhc_g = col8.number_input(
+        qty_per_ahu = col8.number_input(
+            "Qty/AHU",
+            min_value=0.0,
+            value=float(_row_value(selected_row, "Qty/AHU", 0.0)),
+            step=1.0,
+            key=f"qty_per_ahu_{form_key}",
+        )
+        dhc_g = col9.number_input(
             "DHC (g)",
             min_value=0.0,
             value=float(_row_value(selected_row, "DHC (g)", 0.0)),
             step=50.0,
             key=f"dhc_g_{form_key}",
         )
-        mass_efficiency = col9.number_input(
+
+        col9a, col10, col11 = st.columns(3)
+        mass_efficiency = col9a.number_input(
             "Mass Efficiency",
             min_value=0.0,
             value=float(_row_value(selected_row, "Mass Efficiency", 0.0)),
             step=0.01,
             key=f"mass_efficiency_{form_key}",
         )
-
-        col10, col11, col12 = st.columns(3)
         initial_dp = col10.number_input(
             "Initial DP (Pa)",
             min_value=0.0,
@@ -371,6 +401,8 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             step=5.0,
             key=f"avg_dp_{form_key}",
         )
+
+        col12, col13, col14 = st.columns([1, 1, 2])
         final_dp = col12.number_input(
             "Final DP (Pa)",
             min_value=0.0,
@@ -378,8 +410,6 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             step=5.0,
             key=f"final_dp_{form_key}",
         )
-
-        col13, col14 = st.columns([1, 2])
         price = col13.number_input(
             "Price/filter",
             min_value=0.0,
@@ -401,6 +431,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             "Model": model,
             "Size": size,
             "ISO Class": iso_class,
+            "Qty/AHU": qty_per_ahu,
             "DHC (g)": dhc_g,
             "Initial DP (Pa)": initial_dp,
             "Avg DP (Pa)": avg_dp,
@@ -453,6 +484,7 @@ def dataframe_to_records(dataframe: pd.DataFrame) -> list[FilterDatabaseRecord]:
                 model=str(row.get("model", "")).strip(),
                 size=str(row.get("size", "")).strip(),
                 filter_class=str(row.get("filter_class", "")).strip(),
+                qty_per_ahu=_to_float(row.get("qty_per_ahu", 1)),
                 dhc_g=_to_float(row.get("dhc_g", 0)),
                 initial_dp_pa=_to_float(row.get("initial_dp_pa", 0)),
                 avg_dp_pa=_to_float(row.get("avg_dp_pa", 0)),
@@ -478,8 +510,32 @@ def _normalize_column_name(name: object) -> str:
     return str(name or "").strip().lower().replace("_", " ")
 
 
+def _known_column_count(columns: list[object]) -> int:
+    known_aliases = {
+        _normalize_column_name(alias)
+        for aliases in COLUMN_ALIASES.values()
+        for alias in aliases
+    }
+    return sum(1 for column in columns if _normalize_column_name(column) in known_aliases)
+
+
+def _promote_detected_header_row(dataframe: pd.DataFrame) -> pd.DataFrame:
+    if _known_column_count(list(dataframe.columns)) >= 3:
+        return dataframe
+
+    for row_index in range(min(len(dataframe), 12)):
+        row_values = dataframe.iloc[row_index].tolist()
+        normalized_values = {_normalize_column_name(value) for value in row_values}
+        if "filter id" in normalized_values and "stage" in normalized_values:
+            promoted = dataframe.iloc[row_index + 1 :].copy()
+            promoted.columns = [str(value).strip() for value in row_values]
+            return promoted.reset_index(drop=True)
+
+    return dataframe
+
+
 def normalize_uploaded_database(dataframe: pd.DataFrame) -> pd.DataFrame:
-    source = dataframe.dropna(how="all").copy()
+    source = _promote_detected_header_row(dataframe.dropna(how="all")).dropna(how="all").copy()
     source.columns = [str(column).strip() for column in source.columns]
     normalized = pd.DataFrame(columns=DATABASE_COLUMNS)
 
@@ -495,8 +551,12 @@ def normalize_uploaded_database(dataframe: pd.DataFrame) -> pd.DataFrame:
         else:
             normalized[target_column] = ""
 
+    if "qty_per_ahu" in normalized.columns:
+        normalized["qty_per_ahu"] = normalized["qty_per_ahu"].replace("", 1)
+
     for number_column in [
         "dhc_g",
+        "qty_per_ahu",
         "initial_dp_pa",
         "avg_dp_pa",
         "final_dp_pa",
@@ -509,7 +569,7 @@ def normalize_uploaded_database(dataframe: pd.DataFrame) -> pd.DataFrame:
 
 
 def read_excel_database(uploaded_file: Any, sheet_name: str) -> pd.DataFrame:
-    raw = pd.read_excel(uploaded_file, sheet_name=sheet_name)
+    raw = pd.read_excel(uploaded_file, sheet_name=sheet_name, header=None)
     return normalize_uploaded_database(raw)
 
 
