@@ -445,6 +445,18 @@ def reset_filter_database_editor() -> None:
     st.session_state.filter_database_nonce = st.session_state.get("filter_database_nonce", 0) + 1
 
 
+def reset_project_info_editor() -> None:
+    for key in [
+        "project_info_project_name",
+        "project_info_customer",
+        "project_info_location",
+        "project_info_engineer",
+        "project_info_date",
+        "project_info_currency",
+    ]:
+        st.session_state.pop(key, None)
+
+
 def normalize_page_key(page: str | None) -> str:
     if page in MENU_KEYS:
         return str(page)
@@ -500,6 +512,7 @@ def render_sidebar(project: Project) -> str:
     st.sidebar.divider()
     if st.sidebar.button("New Project", use_container_width=True):
         set_project(create_new_project())
+        reset_project_info_editor()
         reset_filter_database_editor()
         st.session_state.requested_page = "setup"
         st.session_state.flash_message = "New project created. Please enter project information."
@@ -718,6 +731,7 @@ def render_export(project: Project, comparison: dict[str, object]) -> None:
         try:
             loaded = load_project_from_bytes(uploaded.getvalue())
             set_project(loaded)
+            reset_project_info_editor()
             reset_filter_database_editor()
             st.success("Project loaded. The interface has been updated.")
             st.rerun()
@@ -738,6 +752,7 @@ def render_export(project: Project, comparison: dict[str, object]) -> None:
 
     if st.button("Reset Input", use_container_width=True):
         set_project(create_new_project())
+        reset_project_info_editor()
         reset_filter_database_editor()
         st.session_state.requested_page = "setup"
         st.session_state.flash_message = "Input reset. A fresh project is ready."
