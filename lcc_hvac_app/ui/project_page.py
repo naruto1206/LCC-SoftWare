@@ -5,10 +5,22 @@ import streamlit as st
 from lcc_hvac_app.engine.models import ProjectInfo
 
 
-def _project_text_input(label: str, value: str, key: str) -> str:
+def _sync_project_info_field(field_name: str, key: str) -> None:
+    project = st.session_state.get("project")
+    if project is None or not hasattr(project, "project_info"):
+        return
+    setattr(project.project_info, field_name, st.session_state.get(key, ""))
+
+
+def _project_text_input(label: str, value: str, key: str, field_name: str) -> str:
     if key not in st.session_state:
         st.session_state[key] = value
-    return st.text_input(label, key=key)
+    return st.text_input(
+        label,
+        key=key,
+        on_change=_sync_project_info_field,
+        args=(field_name, key),
+    )
 
 
 def render_project_info(info: ProjectInfo) -> ProjectInfo:
@@ -19,13 +31,34 @@ def render_project_info(info: ProjectInfo) -> ProjectInfo:
             "Project name",
             info.project_name,
             "project_info_project_name",
+            "project_name",
         )
-        customer = _project_text_input("Customer", info.customer, "project_info_customer")
-        location = _project_text_input("Location", info.location, "project_info_location")
+        customer = _project_text_input(
+            "Customer",
+            info.customer,
+            "project_info_customer",
+            "customer",
+        )
+        location = _project_text_input(
+            "Location",
+            info.location,
+            "project_info_location",
+            "location",
+        )
     with right:
-        engineer = _project_text_input("Engineer", info.engineer, "project_info_engineer")
-        date = _project_text_input("Date", info.date, "project_info_date")
-        currency = _project_text_input("Currency", info.currency, "project_info_currency")
+        engineer = _project_text_input(
+            "Engineer",
+            info.engineer,
+            "project_info_engineer",
+            "engineer",
+        )
+        date = _project_text_input("Date", info.date, "project_info_date", "date")
+        currency = _project_text_input(
+            "Currency",
+            info.currency,
+            "project_info_currency",
+            "currency",
+        )
     st.info("These fields appear in the project context bar and exported Excel report.")
     return ProjectInfo(
         project_name=project_name,
