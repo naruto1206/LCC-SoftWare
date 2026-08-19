@@ -118,7 +118,14 @@ COLUMN_ALIASES = {
         "eurovent avg dp (pa)",
     ],
     "final_dp_pa": ["final dp", "final dp (pa)", "final pressure drop"],
-    "mass_efficiency": ["mass efficiency", "mass eff.", "efficiency", "eff"],
+    "mass_efficiency": [
+        "mass efficiency",
+        "mass efficiency %",
+        "mass eff.",
+        "mass eff. %",
+        "efficiency",
+        "eff",
+    ],
     "price_vnd_filter": [
         "price/filter",
         "price/filter (vnd)",

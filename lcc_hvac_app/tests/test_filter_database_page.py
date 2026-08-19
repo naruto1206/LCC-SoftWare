@@ -68,6 +68,7 @@ def test_normalize_uploaded_database_imports_qty_per_ahu():
                 "Qty/AHU": 20,
                 "DHC to final DP (g)": 600,
                 "Eurovent Avg DP (Pa)": 85,
+                "Mass Efficiency %": 0.7,
                 "Price/filter (VND)": 250000,
             }
         ]
@@ -79,6 +80,7 @@ def test_normalize_uploaded_database_imports_qty_per_ahu():
     assert normalized.loc[0, "Qty/AHU"] == 20
     assert normalized.loc[0, "DHC (g)"] == 600
     assert normalized.loc[0, "Avg DP (Pa)"] == 85
+    assert normalized.loc[0, "Mass Efficiency"] == 0.7
     assert normalized.loc[0, "Price/filter"] == 250000
 
 
