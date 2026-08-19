@@ -23,7 +23,7 @@ from lcc_hvac_app.project_io.json_store import load_project_from_bytes, project_
 from lcc_hvac_app.ui.assumptions_page import render_assumptions
 from lcc_hvac_app.ui.dashboard_page import render_dashboard
 from lcc_hvac_app.ui.filter_database_page import render_filter_database
-from lcc_hvac_app.ui.project_page import render_project_info
+from lcc_hvac_app.ui.project_page import render_project_info, sync_project_info_from_session
 from lcc_hvac_app.ui.results_page import render_results
 from lcc_hvac_app.ui.scenario_input_page import copy_scenario, render_scenario_editor
 from lcc_hvac_app.ui.tco_model_page import render_tco_model
@@ -762,6 +762,7 @@ def render_export(project: Project, comparison: dict[str, object]) -> None:
 def main() -> None:
     setup_page()
     project = get_project()
+    project.project_info = sync_project_info_from_session(project.project_info)
     page_key = render_sidebar(project)
     render_page_header(page_key)
     render_project_context(project, page_key)

@@ -5,6 +5,23 @@ import streamlit as st
 from lcc_hvac_app.engine.models import ProjectInfo
 
 
+PROJECT_INFO_FIELD_KEYS = {
+    "project_name": "project_info_project_name",
+    "customer": "project_info_customer",
+    "location": "project_info_location",
+    "engineer": "project_info_engineer",
+    "date": "project_info_date",
+    "currency": "project_info_currency",
+}
+
+
+def sync_project_info_from_session(info: ProjectInfo) -> ProjectInfo:
+    for field_name, key in PROJECT_INFO_FIELD_KEYS.items():
+        if key in st.session_state:
+            setattr(info, field_name, st.session_state.get(key, ""))
+    return info
+
+
 def _sync_project_info_field(field_name: str, key: str) -> None:
     project = st.session_state.get("project")
     if project is None or not hasattr(project, "project_info"):
