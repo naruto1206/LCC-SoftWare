@@ -307,6 +307,10 @@ def _missing_filter_record_fields(row: dict[str, Any]) -> list[str]:
 
 def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
     filter_ids = filter_record_ids(current_df)
+    requested_edit_id = st.session_state.pop("filter_record_to_edit_requested", None)
+    if requested_edit_id in filter_ids:
+        st.session_state.filter_record_to_edit = requested_edit_id
+
     selected_existing = st.selectbox(
         "Edit existing filter",
         ["Create new filter"] + filter_ids,
@@ -629,7 +633,7 @@ def render_filter_record_edit_tools(saved_df: pd.DataFrame) -> None:
         )
         action_col, note_col = st.columns([1, 2])
         if action_col.button("Edit selected row", use_container_width=True):
-            st.session_state.filter_record_to_edit = selected_id
+            st.session_state.filter_record_to_edit_requested = selected_id
             st.success(f"{selected_id} loaded into the edit form above.")
             st.rerun()
         note_col.caption("After editing, press Save filter record to update the row.")
