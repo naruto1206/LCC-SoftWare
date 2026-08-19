@@ -11,7 +11,6 @@ def test_filter_database_csv_round_trip(tmp_path):
         FilterDatabaseRecord(
             filter_id="TEST-001",
             supplier="Air Filtech",
-            filter_type="Bag filter",
             stage="Fine-filter",
             model="Test model",
             size="592x592x600",

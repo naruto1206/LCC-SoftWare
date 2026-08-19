@@ -102,7 +102,6 @@ def default_filter_database() -> list[FilterDatabaseRecord]:
         FilterDatabaseRecord(
             filter_id="PF-001",
             supplier="Air Filtech",
-            filter_type="Panel filter",
             stage="Pre-filter",
             model="Pre-filter sample",
             size="592x592x46",
@@ -118,7 +117,6 @@ def default_filter_database() -> list[FilterDatabaseRecord]:
         FilterDatabaseRecord(
             filter_id="FF-001",
             supplier="Air Filtech",
-            filter_type="Bag filter",
             stage="Fine-filter",
             model="Fine-filter sample",
             size="592x592x600",
@@ -134,7 +132,6 @@ def default_filter_database() -> list[FilterDatabaseRecord]:
         FilterDatabaseRecord(
             filter_id="HEPA-001",
             supplier="Air Filtech",
-            filter_type="HEPA filter",
             stage="HEPA",
             model="HEPA sample",
             size="610x610x292",

@@ -12,7 +12,6 @@ DEFAULT_FILTER_DATABASE_PATH = PACKAGE_DIR / "data" / "filter_database.csv"
 FILTER_DATABASE_FIELDS = [
     "filter_id",
     "supplier",
-    "filter_type",
     "stage",
     "model",
     "size",

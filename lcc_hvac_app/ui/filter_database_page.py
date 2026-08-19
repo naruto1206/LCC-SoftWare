@@ -13,7 +13,6 @@ from lcc_hvac_app.project_io.filter_database_store import save_filter_database
 DATABASE_COLUMNS = [
     "filter_id",
     "supplier",
-    "filter_type",
     "stage",
     "model",
     "size",
@@ -31,7 +30,6 @@ DATABASE_COLUMNS = [
 DISPLAY_COLUMNS = {
     "filter_id": "Filter ID",
     "supplier": "Supplier",
-    "filter_type": "Filter Type",
     "stage": "Stage",
     "model": "Model",
     "size": "Size",
@@ -99,7 +97,6 @@ ISO_CLASS_OPTIONS = [
 COLUMN_ALIASES = {
     "filter_id": ["filter id", "id", "code", "filter code", "product code"],
     "supplier": ["supplier", "supplier/brand", "brand", "manufacturer", "maker"],
-    "filter_type": ["filter type", "type", "product type"],
     "stage": ["stage", "filter stage", "level"],
     "model": ["model", "filter model", "product", "item"],
     "size": ["size", "dimension", "dimensions"],
@@ -278,7 +275,6 @@ def _missing_filter_record_fields(row: dict[str, Any]) -> list[str]:
     required_text_fields = [
         "Filter ID",
         "Supplier",
-        "Filter Type",
         "Stage",
         "Model",
         "Size",
@@ -337,10 +333,10 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             value=str(_row_value(selected_row, "Supplier")),
             key=f"supplier_{form_key}",
         )
-        filter_type = col3.text_input(
-            "Filter Type",
-            value=str(_row_value(selected_row, "Filter Type")),
-            key=f"filter_type_{form_key}",
+        model = col3.text_input(
+            "Model",
+            value=str(_row_value(selected_row, "Model")),
+            key=f"model_{form_key}",
         )
 
         col4, col5, col6 = st.columns(3)
@@ -350,47 +346,42 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             index=_option_index(STAGE_OPTIONS, _row_value(selected_row, "Stage")),
             key=f"stage_{form_key}",
         )
-        model = col5.text_input(
-            "Model",
-            value=str(_row_value(selected_row, "Model")),
-            key=f"model_{form_key}",
-        )
-        size = col6.text_input(
+        size = col5.text_input(
             "Size",
             value=str(_row_value(selected_row, "Size")),
             key=f"size_{form_key}",
         )
-
-        col7, col8, col9 = st.columns(3)
-        iso_class = col7.selectbox(
+        iso_class = col6.selectbox(
             "ISO Class",
             ISO_CLASS_OPTIONS,
             index=_option_index(ISO_CLASS_OPTIONS, _row_value(selected_row, "ISO Class")),
             key=f"iso_class_{form_key}",
         )
-        qty_per_ahu = col8.number_input(
+
+        col7, col8, col9 = st.columns(3)
+        qty_per_ahu = col7.number_input(
             "Qty/AHU",
             min_value=0.0,
             value=float(_row_value(selected_row, "Qty/AHU", 0.0)),
             step=1.0,
             key=f"qty_per_ahu_{form_key}",
         )
-        dhc_g = col9.number_input(
+        dhc_g = col8.number_input(
             "DHC (g)",
             min_value=0.0,
             value=float(_row_value(selected_row, "DHC (g)", 0.0)),
             step=50.0,
             key=f"dhc_g_{form_key}",
         )
-
-        col9a, col10, col11 = st.columns(3)
-        mass_efficiency = col9a.number_input(
+        mass_efficiency = col9.number_input(
             "Mass Efficiency",
             min_value=0.0,
             value=float(_row_value(selected_row, "Mass Efficiency", 0.0)),
             step=0.01,
             key=f"mass_efficiency_{form_key}",
         )
+
+        col10, col11 = st.columns(2)
         initial_dp = col10.number_input(
             "Initial DP (Pa)",
             min_value=0.0,
@@ -430,7 +421,6 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
         filter_record = {
             "Filter ID": filter_id,
             "Supplier": supplier,
-            "Filter Type": filter_type,
             "Stage": stage,
             "Model": model,
             "Size": size,
@@ -483,7 +473,6 @@ def dataframe_to_records(dataframe: pd.DataFrame) -> list[FilterDatabaseRecord]:
             FilterDatabaseRecord(
                 filter_id=str(row.get("filter_id", "")).strip(),
                 supplier=str(row.get("supplier", "")).strip(),
-                filter_type=str(row.get("filter_type", "")).strip(),
                 stage=str(row.get("stage", "")).strip(),
                 model=str(row.get("model", "")).strip(),
                 size=str(row.get("size", "")).strip(),
