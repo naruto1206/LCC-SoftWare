@@ -51,12 +51,10 @@ DISPLAY_COLUMNS = {
 STAGE_OPTIONS = [
     "",
     "Pre-filter",
-    "Medium-filter",
     "Fine-filter",
-    "Final-filter",
+    "EPA / Final-filter",
     "HEPA",
     "ULPA",
-    "Carbon / Odor",
 ]
 
 COLUMN_ALIASES = {
