@@ -58,6 +58,10 @@ def test_dataframe_to_excel_bytes_exports_filter_database_sheet():
     assert worksheet["A1"].value == "Filter ID"
     assert worksheet["A2"].value == "PF-001"
     assert "ISO Class" in [cell.value for cell in worksheet[1]]
+    assert worksheet["A1"].fill.fgColor.rgb == "000F766E"
+    assert worksheet["A2"].fill.fgColor.rgb == "00DCFCE7"
+    assert worksheet.freeze_panes == "A2"
+    assert len(worksheet.data_validations.dataValidation) >= 1
 
 
 def test_normalize_uploaded_database_imports_qty_per_ahu():

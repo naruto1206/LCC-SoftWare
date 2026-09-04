@@ -5,6 +5,11 @@ from typing import Any
 
 import pandas as pd
 import streamlit as st
+from openpyxl.comments import Comment
+from openpyxl.formatting.rule import FormulaRule
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Side
+from openpyxl.utils import get_column_letter
+from openpyxl.worksheet.datavalidation import DataValidation
 
 from lcc_hvac_app.engine.models import FilterDatabaseRecord
 
@@ -617,7 +622,133 @@ def dataframe_to_excel_bytes(dataframe: pd.DataFrame) -> bytes:
             index=False,
             sheet_name="Filter_Database",
         )
+        worksheet = writer.book["Filter_Database"]
+        format_filter_database_worksheet(worksheet)
     return output.getvalue()
+
+
+def format_filter_database_worksheet(worksheet: Any) -> None:
+    header_fill = PatternFill("solid", fgColor="0F766E")
+    required_fill = PatternFill("solid", fgColor="DCFCE7")
+    dimension_fill = PatternFill("solid", fgColor="E0F2FE")
+    pressure_fill = PatternFill("solid", fgColor="FEF9C3")
+    cost_fill = PatternFill("solid", fgColor="FCE7F3")
+    optional_fill = PatternFill("solid", fgColor="F8FAFC")
+    warning_fill = PatternFill("solid", fgColor="FEE2E2")
+    white_font = Font(color="FFFFFF", bold=True)
+    body_font = Font(color="111827")
+    thin_gray = Side(style="thin", color="CBD5E1")
+    border = Border(left=thin_gray, right=thin_gray, top=thin_gray, bottom=thin_gray)
+    headers = [cell.value for cell in worksheet[1]]
+    max_row = max(worksheet.max_row, 200)
+    worksheet.freeze_panes = "A2"
+    worksheet.auto_filter.ref = f"A1:{get_column_letter(worksheet.max_column)}{max(worksheet.max_row, 2)}"
+    worksheet.sheet_view.showGridLines = False
+
+    column_widths = {
+        "Filter ID": 18,
+        "Supplier": 18,
+        "Stage": 20,
+        "Filter model / description": 34,
+        "ISO Class": 18,
+        "Qty/AHU": 12,
+        "Width (mm)": 12,
+        "Height (mm)": 12,
+        "Media area/filter (m2)": 20,
+        "DHC/filter direct (g)": 20,
+        "Initial DP (Pa)": 15,
+        "Avg DP (Pa)": 14,
+        "Final DP (Pa)": 14,
+        "Mass Eff. %": 13,
+        "Price/filter (VND)": 18,
+        "Notes": 28,
+    }
+    number_formats = {
+        "Qty/AHU": "0",
+        "Width (mm)": "0",
+        "Height (mm)": "0",
+        "Media area/filter (m2)": "0.00",
+        "DHC/filter direct (g)": "0",
+        "Initial DP (Pa)": "0",
+        "Avg DP (Pa)": "0",
+        "Final DP (Pa)": "0",
+        "Mass Eff. %": "0.00",
+        "Price/filter (VND)": '#,##0 "VND"',
+    }
+    column_groups = {
+        "Filter ID": required_fill,
+        "Supplier": required_fill,
+        "Stage": required_fill,
+        "Filter model / description": required_fill,
+        "ISO Class": required_fill,
+        "Qty/AHU": dimension_fill,
+        "Width (mm)": dimension_fill,
+        "Height (mm)": dimension_fill,
+        "Media area/filter (m2)": dimension_fill,
+        "DHC/filter direct (g)": pressure_fill,
+        "Initial DP (Pa)": pressure_fill,
+        "Avg DP (Pa)": pressure_fill,
+        "Final DP (Pa)": pressure_fill,
+        "Mass Eff. %": pressure_fill,
+        "Price/filter (VND)": cost_fill,
+        "Notes": optional_fill,
+    }
+    comments = {
+        "Avg DP (Pa)": "Recommended formula: round(((Initial DP + Final DP) / 2) * 1.1).",
+        "Stage": "Choose a filter stage from the dropdown list.",
+        "Price/filter (VND)": "Enter price for one filter, not total project price.",
+    }
+
+    for cell in worksheet[1]:
+        cell.fill = header_fill
+        cell.font = white_font
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = border
+        if cell.value in comments:
+            cell.comment = Comment(comments[cell.value], "LCC HVAC App")
+
+    for column_index, header in enumerate(headers, start=1):
+        letter = get_column_letter(column_index)
+        worksheet.column_dimensions[letter].width = column_widths.get(str(header), 16)
+        fill = column_groups.get(str(header), optional_fill)
+        number_format = number_formats.get(str(header), "General")
+        for row in range(2, max_row + 1):
+            cell = worksheet[f"{letter}{row}"]
+            cell.fill = fill
+            cell.font = body_font
+            cell.border = border
+            cell.alignment = Alignment(vertical="center", wrap_text=True)
+            cell.number_format = number_format
+            cell.protection = Protection(locked=False)
+
+    worksheet.row_dimensions[1].height = 34
+
+    stage_column = headers.index("Stage") + 1 if "Stage" in headers else None
+    if stage_column is not None:
+        stage_letter = get_column_letter(stage_column)
+        stage_values = ",".join(option for option in STAGE_OPTIONS if option)
+        validation = DataValidation(
+            type="list",
+            formula1=f'"{stage_values}"',
+            allow_blank=False,
+            showErrorMessage=True,
+        )
+        validation.error = "Please choose one of the approved filter stages."
+        validation.errorTitle = "Invalid stage"
+        validation.prompt = "Select Pre-filter, Fine-filter, EPA / Final-filter, HEPA, or ULPA."
+        validation.promptTitle = "Filter stage"
+        worksheet.add_data_validation(validation)
+        validation.add(f"{stage_letter}2:{stage_letter}{max_row}")
+
+    required_headers = ["Filter ID", "Supplier", "Stage", "Filter model / description", "ISO Class"]
+    for required_header in required_headers:
+        if required_header not in headers:
+            continue
+        letter = get_column_letter(headers.index(required_header) + 1)
+        worksheet.conditional_formatting.add(
+            f"{letter}2:{letter}{max_row}",
+            FormulaRule(formula=[f'LEN(TRIM({letter}2))=0'], fill=warning_fill),
+        )
 
 
 def render_filter_record_delete_tools(saved_df: pd.DataFrame) -> pd.DataFrame:
