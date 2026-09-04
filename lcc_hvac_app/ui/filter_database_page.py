@@ -15,9 +15,11 @@ DATABASE_COLUMNS = [
     "supplier",
     "stage",
     "model",
-    "size",
     "filter_class",
     "qty_per_ahu",
+    "width_mm",
+    "height_mm",
+    "media_area_m2",
     "dhc_g",
     "initial_dp_pa",
     "avg_dp_pa",
@@ -31,16 +33,18 @@ DISPLAY_COLUMNS = {
     "filter_id": "Filter ID",
     "supplier": "Supplier",
     "stage": "Stage",
-    "model": "Model",
-    "size": "Size",
+    "model": "Filter model / description",
     "filter_class": "ISO Class",
     "qty_per_ahu": "Qty/AHU",
-    "dhc_g": "DHC (g)",
+    "width_mm": "Width (mm)",
+    "height_mm": "Height (mm)",
+    "media_area_m2": "Media area/filter (m2)",
+    "dhc_g": "DHC/filter direct (g)",
     "initial_dp_pa": "Initial DP (Pa)",
     "avg_dp_pa": "Avg DP (Pa)",
     "final_dp_pa": "Final DP (Pa)",
-    "mass_efficiency": "Mass Efficiency",
-    "price_vnd_filter": "Price/filter",
+    "mass_efficiency": "Mass Eff. %",
+    "price_vnd_filter": "Price/filter (VND)",
     "notes": "Notes",
 }
 
@@ -55,56 +59,30 @@ STAGE_OPTIONS = [
     "Carbon / Odor",
 ]
 
-ISO_CLASS_OPTIONS = [
-    "",
-    "ISO Coarse",
-    "ISO Coarse 30%",
-    "ISO Coarse 45%",
-    "ISO Coarse 60%",
-    "ISO Coarse 80%",
-    "ISO ePM10 50%",
-    "ISO ePM10 60%",
-    "ISO ePM10 70%",
-    "ISO ePM10 80%",
-    "ISO ePM10 90%",
-    "ISO ePM2.5 50%",
-    "ISO ePM2.5 60%",
-    "ISO ePM2.5 70%",
-    "ISO ePM2.5 80%",
-    "ISO ePM2.5 90%",
-    "ISO ePM1 50%",
-    "ISO ePM1 60%",
-    "ISO ePM1 70%",
-    "ISO ePM1 80%",
-    "ISO ePM1 90%",
-    "G3 / ISO Coarse",
-    "G4 / ISO Coarse",
-    "M5 / ISO ePM10",
-    "M6 / ISO ePM10",
-    "F7 / ISO ePM2.5",
-    "F8 / ISO ePM1",
-    "F9 / ISO ePM1",
-    "E10",
-    "E11",
-    "E12",
-    "H13",
-    "H14",
-    "U15",
-    "U16",
-    "U17",
-]
-
 COLUMN_ALIASES = {
     "filter_id": ["filter id", "id", "code", "filter code", "product code"],
     "supplier": ["supplier", "supplier/brand", "brand", "manufacturer", "maker"],
     "stage": ["stage", "filter stage", "level"],
-    "model": ["model", "filter model", "product", "item"],
-    "size": ["size", "dimension", "dimensions"],
-    "filter_class": ["class", "grade", "filter class", "en class", "iso class", "ISO Class"],
+    "model": ["model", "filter model", "filter model / description", "description", "product", "item"],
+    "filter_class": ["iso class", "class", "grade", "filter class", "en class"],
     "qty_per_ahu": ["qty/ahu", "qty ahu", "quantity/ahu", "quantity per ahu", "qty per ahu"],
+    "width_mm": ["width", "width mm", "width (mm)", "w", "w mm"],
+    "height_mm": ["height", "height mm", "height (mm)", "h", "h mm"],
+    "media_area_m2": [
+        "media area",
+        "media area/filter",
+        "media area/filter m2",
+        "media area/filter m²",
+        "media area/filter (m2)",
+        "media area (m2)",
+        "area",
+        "area (m2)",
+    ],
     "dhc_g": [
         "dhc",
         "dhc (g)",
+        "dhc/filter direct g",
+        "dhc/filter direct (g)",
         "dhc to final dp (g)",
         "dust holding capacity",
         "dust holding capacity (g)",
@@ -123,11 +101,13 @@ COLUMN_ALIASES = {
         "mass efficiency %",
         "mass eff.",
         "mass eff. %",
+        "mass eff %",
         "efficiency",
         "eff",
     ],
     "price_vnd_filter": [
         "price/filter",
+        "price/filter vnd",
         "price/filter (vnd)",
         "price",
         "unit price",
@@ -158,12 +138,18 @@ def empty_display_row() -> dict[str, Any]:
         if column
         in {
             "DHC (g)",
+            "DHC/filter direct (g)",
             "Qty/AHU",
+            "Width (mm)",
+            "Height (mm)",
+            "Media area/filter (m2)",
             "Initial DP (Pa)",
             "Avg DP (Pa)",
             "Final DP (Pa)",
             "Mass Efficiency",
+            "Mass Eff. %",
             "Price/filter",
+            "Price/filter (VND)",
         }
         else ""
         for column in DISPLAY_COLUMNS.values()
@@ -174,8 +160,27 @@ def normalize_display_dataframe(dataframe: pd.DataFrame | None) -> pd.DataFrame:
     if dataframe is None:
         return pd.DataFrame(columns=list(DISPLAY_COLUMNS.values()))
     normalized = dataframe.copy()
+    if "Model" in normalized.columns and "Filter model / description" not in normalized.columns:
+        normalized = normalized.rename(columns={"Model": "Filter model / description"})
     if "Class" in normalized.columns and "ISO Class" not in normalized.columns:
         normalized = normalized.rename(columns={"Class": "ISO Class"})
+    if "Size" in normalized.columns:
+        sizes = normalized["Size"].fillna("").astype(str).str.extract(
+            r"(?P<width>\d+(?:\.\d+)?)\s*x\s*(?P<height>\d+(?:\.\d+)?)",
+            expand=True,
+        )
+        if "Width (mm)" not in normalized.columns:
+            normalized["Width (mm)"] = sizes["width"]
+        if "Height (mm)" not in normalized.columns:
+            normalized["Height (mm)"] = sizes["height"]
+    if "Mass Efficiency" in normalized.columns and "Mass Eff. %" not in normalized.columns:
+        normalized = normalized.rename(columns={"Mass Efficiency": "Mass Eff. %"})
+    if "Price/filter" in normalized.columns and "Price/filter (VND)" not in normalized.columns:
+        normalized = normalized.rename(columns={"Price/filter": "Price/filter (VND)"})
+    if "DHC (g)" in normalized.columns and "DHC/filter direct (g)" not in normalized.columns:
+        normalized = normalized.rename(columns={"DHC (g)": "DHC/filter direct (g)"})
+    if "Area (m2)" in normalized.columns and "Media area/filter (m2)" not in normalized.columns:
+        normalized = normalized.rename(columns={"Area (m2)": "Media area/filter (m2)"})
     return normalized.reindex(columns=list(DISPLAY_COLUMNS.values()), fill_value="")
 
 
@@ -283,18 +288,19 @@ def _missing_filter_record_fields(row: dict[str, Any]) -> list[str]:
         "Filter ID",
         "Supplier",
         "Stage",
-        "Model",
-        "Size",
+        "Filter model / description",
         "ISO Class",
     ]
     required_positive_fields = [
         "Qty/AHU",
-        "DHC (g)",
+        "Width (mm)",
+        "Height (mm)",
+        "DHC/filter direct (g)",
         "Initial DP (Pa)",
         "Avg DP (Pa)",
         "Final DP (Pa)",
-        "Mass Efficiency",
-        "Price/filter",
+        "Mass Eff. %",
+        "Price/filter (VND)",
     ]
 
     for field_name in required_text_fields:
@@ -341,8 +347,8 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             key=f"supplier_{form_key}",
         )
         model = col3.text_input(
-            "Model",
-            value=str(_row_value(selected_row, "Model")),
+            "Filter model / description",
+            value=str(_row_value(selected_row, "Filter model / description")),
             key=f"model_{form_key}",
         )
 
@@ -353,73 +359,91 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             index=_option_index(STAGE_OPTIONS, _row_value(selected_row, "Stage")),
             key=f"stage_{form_key}",
         )
-        size = col5.text_input(
-            "Size",
-            value=str(_row_value(selected_row, "Size")),
-            key=f"size_{form_key}",
-        )
-        iso_class = col6.selectbox(
+        iso_class = col5.text_input(
             "ISO Class",
-            ISO_CLASS_OPTIONS,
-            index=_option_index(ISO_CLASS_OPTIONS, _row_value(selected_row, "ISO Class")),
+            value=str(_row_value(selected_row, "ISO Class")),
             key=f"iso_class_{form_key}",
+            help="Reference only. This field helps identify the selected filter and is not used directly in LCC calculation.",
         )
 
         col7, col8, col9 = st.columns(3)
-        qty_per_ahu = col7.number_input(
+        width_mm = col7.number_input(
+            "Width (mm)",
+            min_value=0.0,
+            value=float(_row_value(selected_row, "Width (mm)", 0.0)),
+            step=1.0,
+            key=f"width_mm_{form_key}",
+        )
+        height_mm = col8.number_input(
+            "Height (mm)",
+            min_value=0.0,
+            value=float(_row_value(selected_row, "Height (mm)", 0.0)),
+            step=1.0,
+            key=f"height_mm_{form_key}",
+        )
+        media_area = col9.number_input(
+            "Media area/filter (m2)",
+            min_value=0.0,
+            value=float(_row_value(selected_row, "Media area/filter (m2)", 0.0)),
+            step=0.1,
+            key=f"media_area_{form_key}",
+        )
+
+        col10, col11, col12 = st.columns(3)
+        qty_per_ahu = col10.number_input(
             "Qty/AHU",
             min_value=0.0,
             value=float(_row_value(selected_row, "Qty/AHU", 0.0)),
             step=1.0,
             key=f"qty_per_ahu_{form_key}",
         )
-        dhc_g = col8.number_input(
-            "DHC (g)",
+        dhc_g = col11.number_input(
+            "DHC/filter direct (g)",
             min_value=0.0,
-            value=float(_row_value(selected_row, "DHC (g)", 0.0)),
+            value=float(_row_value(selected_row, "DHC/filter direct (g)", 0.0)),
             step=50.0,
             key=f"dhc_g_{form_key}",
         )
-        mass_efficiency = col9.number_input(
-            "Mass Efficiency",
+        mass_efficiency = col12.number_input(
+            "Mass Eff. %",
             min_value=0.0,
-            value=float(_row_value(selected_row, "Mass Efficiency", 0.0)),
+            value=float(_row_value(selected_row, "Mass Eff. %", 0.0)),
             step=0.01,
             key=f"mass_efficiency_{form_key}",
         )
 
-        col10, col11 = st.columns(2)
-        initial_dp = col10.number_input(
+        col13, col14, col15 = st.columns(3)
+        initial_dp = col13.number_input(
             "Initial DP (Pa)",
             min_value=0.0,
             value=float(_row_value(selected_row, "Initial DP (Pa)", 0.0)),
             step=5.0,
             key=f"initial_dp_{form_key}",
         )
-        avg_dp = col11.number_input(
+        avg_dp = col14.number_input(
             "Avg DP (Pa)",
             min_value=0.0,
             value=float(_row_value(selected_row, "Avg DP (Pa)", 0.0)),
             step=5.0,
             key=f"avg_dp_{form_key}",
         )
-
-        col12, col13, col14 = st.columns([1, 1, 2])
-        final_dp = col12.number_input(
+        final_dp = col15.number_input(
             "Final DP (Pa)",
             min_value=0.0,
             value=float(_row_value(selected_row, "Final DP (Pa)", 0.0)),
             step=5.0,
             key=f"final_dp_{form_key}",
         )
-        price = col13.number_input(
-            "Price/filter",
+
+        col16, col17 = st.columns([1, 2])
+        price = col16.number_input(
+            "Price/filter (VND)",
             min_value=0.0,
-            value=float(_row_value(selected_row, "Price/filter", 0.0)),
+            value=float(_row_value(selected_row, "Price/filter (VND)", 0.0)),
             step=10000.0,
             key=f"price_{form_key}",
         )
-        notes = col14.text_input(
+        notes = col17.text_input(
             "Notes",
             value=str(_row_value(selected_row, "Notes")),
             key=f"notes_{form_key}",
@@ -429,16 +453,18 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             "Filter ID": filter_id,
             "Supplier": supplier,
             "Stage": stage,
-            "Model": model,
-            "Size": size,
+            "Filter model / description": model,
             "ISO Class": iso_class,
             "Qty/AHU": qty_per_ahu,
-            "DHC (g)": dhc_g,
+            "Width (mm)": width_mm,
+            "Height (mm)": height_mm,
+            "Media area/filter (m2)": media_area,
+            "DHC/filter direct (g)": dhc_g,
             "Initial DP (Pa)": initial_dp,
             "Avg DP (Pa)": avg_dp,
             "Final DP (Pa)": final_dp,
-            "Mass Efficiency": mass_efficiency,
-            "Price/filter": price,
+            "Mass Eff. %": mass_efficiency,
+            "Price/filter (VND)": price,
             "Notes": notes,
         }
         missing_fields = _missing_filter_record_fields(filter_record)
@@ -470,7 +496,6 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
 
 def dataframe_to_records(dataframe: pd.DataFrame) -> list[FilterDatabaseRecord]:
     rename_map = {value: key for key, value in DISPLAY_COLUMNS.items()}
-    rename_map["Class"] = "filter_class"
     internal = dataframe.rename(columns=rename_map)
     records: list[FilterDatabaseRecord] = []
     for _, row in internal.fillna("").iterrows():
@@ -482,9 +507,11 @@ def dataframe_to_records(dataframe: pd.DataFrame) -> list[FilterDatabaseRecord]:
                 supplier=str(row.get("supplier", "")).strip(),
                 stage=str(row.get("stage", "")).strip(),
                 model=str(row.get("model", "")).strip(),
-                size=str(row.get("size", "")).strip(),
                 filter_class=str(row.get("filter_class", "")).strip(),
                 qty_per_ahu=_to_float(row.get("qty_per_ahu", 1)),
+                width_mm=_to_float(row.get("width_mm", 0)),
+                height_mm=_to_float(row.get("height_mm", 0)),
+                media_area_m2=_to_float(row.get("media_area_m2", 0)),
                 dhc_g=_to_float(row.get("dhc_g", 0)),
                 initial_dp_pa=_to_float(row.get("initial_dp_pa", 0)),
                 avg_dp_pa=_to_float(row.get("avg_dp_pa", 0)),
@@ -501,7 +528,7 @@ def _to_float(value: Any) -> float:
     if value is None or value == "":
         return 0.0
     try:
-        return float(str(value).replace(",", ""))
+        return float(str(value).replace(",", "").replace("%", "").strip())
     except ValueError:
         return 0.0
 
@@ -551,12 +578,26 @@ def normalize_uploaded_database(dataframe: pd.DataFrame) -> pd.DataFrame:
         else:
             normalized[target_column] = ""
 
+    size_column = source_lookup.get("size") or source_lookup.get("dimension") or source_lookup.get("dimensions")
+    if size_column is not None:
+        sizes = source[size_column].fillna("").astype(str).str.extract(
+            r"(?P<width>\d+(?:\.\d+)?)\s*x\s*(?P<height>\d+(?:\.\d+)?)",
+            expand=True,
+        )
+        if not normalized["width_mm"].astype(str).str.strip().any():
+            normalized["width_mm"] = sizes["width"]
+        if not normalized["height_mm"].astype(str).str.strip().any():
+            normalized["height_mm"] = sizes["height"]
+
     if "qty_per_ahu" in normalized.columns:
         normalized["qty_per_ahu"] = normalized["qty_per_ahu"].replace("", 1)
 
     for number_column in [
         "dhc_g",
         "qty_per_ahu",
+        "width_mm",
+        "height_mm",
+        "media_area_m2",
         "initial_dp_pa",
         "avg_dp_pa",
         "final_dp_pa",

@@ -14,9 +14,11 @@ FILTER_DATABASE_FIELDS = [
     "supplier",
     "stage",
     "model",
-    "size",
     "filter_class",
     "qty_per_ahu",
+    "width_mm",
+    "height_mm",
+    "media_area_m2",
     "dhc_g",
     "initial_dp_pa",
     "avg_dp_pa",
@@ -26,8 +28,15 @@ FILTER_DATABASE_FIELDS = [
     "notes",
 ]
 
+LEGACY_FILTER_DATABASE_FIELDS = [
+    "size",
+]
+
 NUMBER_FIELDS = {
     "qty_per_ahu",
+    "width_mm",
+    "height_mm",
+    "media_area_m2",
     "dhc_g",
     "initial_dp_pa",
     "avg_dp_pa",
@@ -41,7 +50,7 @@ def _to_float(value: Any) -> float:
     if value is None or value == "":
         return 0.0
     try:
-        return float(str(value).replace(",", ""))
+        return float(str(value).replace(",", "").replace("%", "").strip())
     except ValueError:
         return 0.0
 
@@ -67,6 +76,8 @@ def load_filter_database(
                 else str(row.get(field, "") or "").strip()
                 for field in FILTER_DATABASE_FIELDS
             }
+            for field in LEGACY_FILTER_DATABASE_FIELDS:
+                normalized[field] = str(row.get(field, "") or "").strip()
             records.append(FilterDatabaseRecord(**normalized))
     return records
 

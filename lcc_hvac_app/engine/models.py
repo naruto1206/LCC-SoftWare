@@ -60,6 +60,9 @@ class FilterDatabaseRecord:
     size: str = ""
     filter_class: str = ""
     qty_per_ahu: float = 1.0
+    width_mm: float = 0.0
+    height_mm: float = 0.0
+    media_area_m2: float = 0.0
     dhc_g: float = 0.0
     initial_dp_pa: float = 0.0
     avg_dp_pa: float = 0.0

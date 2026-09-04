@@ -13,9 +13,11 @@ def test_filter_database_csv_round_trip(tmp_path):
             supplier="Air Filtech",
             stage="Fine-filter",
             model="Test model",
-            size="592x592x600",
             filter_class="ISO ePM1 80%",
             qty_per_ahu=20,
+            width_mm=592,
+            height_mm=592,
+            media_area_m2=12.5,
             dhc_g=600,
             initial_dp_pa=70,
             avg_dp_pa=115,
@@ -32,7 +34,11 @@ def test_filter_database_csv_round_trip(tmp_path):
     assert len(loaded) == 1
     assert loaded[0].filter_id == "TEST-001"
     assert loaded[0].stage == "Fine-filter"
+    assert loaded[0].filter_class == "ISO ePM1 80%"
     assert loaded[0].qty_per_ahu == 20
+    assert loaded[0].width_mm == 592
+    assert loaded[0].height_mm == 592
+    assert loaded[0].media_area_m2 == 12.5
     assert loaded[0].dhc_g == 600
     assert loaded[0].avg_dp_pa == 115
     assert loaded[0].price_vnd_filter == 320000

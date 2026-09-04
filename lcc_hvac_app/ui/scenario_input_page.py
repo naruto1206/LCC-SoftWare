@@ -92,11 +92,14 @@ def _to_float(value: Any) -> float | None:
 
 
 def _filter_label(record: FilterDatabaseRecord) -> str:
+    dimensions = ""
+    if record.width_mm and record.height_mm:
+        dimensions = f"{record.width_mm:,.0f}x{record.height_mm:,.0f} mm"
     parts = [
         record.filter_id,
         record.model,
         record.stage,
-        record.filter_class,
+        dimensions,
     ]
     return " | ".join(part for part in parts if str(part).strip())
 
@@ -295,13 +298,19 @@ def render_scenario_editor(
                 st.caption(
                     "Selected filter values are loaded into the inputs below. You can still adjust any parameter for this scenario."
                 )
-                info_cols = st.columns(6)
+                info_cols = st.columns(7)
                 info_cols[0].metric("Model", selected_record.model or "-")
                 info_cols[1].metric("ISO Class", selected_record.filter_class or "-")
-                info_cols[2].metric("Qty/AHU", f"{selected_record.qty_per_ahu:,.0f}")
-                info_cols[3].metric("DHC", f"{selected_record.dhc_g:,.0f} g")
-                info_cols[4].metric("Avg DP", f"{selected_record.avg_dp_pa:,.0f} Pa")
-                info_cols[5].metric("Price", f"{selected_record.price_vnd_filter:,.0f}")
+                info_cols[2].metric(
+                    "Size",
+                    f"{selected_record.width_mm:,.0f} x {selected_record.height_mm:,.0f} mm"
+                    if selected_record.width_mm and selected_record.height_mm
+                    else "-",
+                )
+                info_cols[3].metric("Qty/AHU", f"{selected_record.qty_per_ahu:,.0f}")
+                info_cols[4].metric("DHC", f"{selected_record.dhc_g:,.0f} g")
+                info_cols[5].metric("Avg DP", f"{selected_record.avg_dp_pa:,.0f} Pa")
+                info_cols[6].metric("Price", f"{selected_record.price_vnd_filter:,.0f}")
                 if st.button(
                     "Reload parameters from selected filter",
                     key=_field_key(scenario.name, index, "apply_filter", key_prefix),

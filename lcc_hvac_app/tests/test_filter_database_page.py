@@ -45,7 +45,8 @@ def test_dataframe_to_excel_bytes_exports_filter_database_sheet():
                 "Filter ID": "PF-001",
                 "Supplier": "Air Filtech",
                 "Stage": "Pre-filter",
-                "DHC (g)": 450,
+                "ISO Class": "ISO Coarse 60%",
+                "DHC/filter direct (g)": 450,
             }
         ]
     )
@@ -56,6 +57,7 @@ def test_dataframe_to_excel_bytes_exports_filter_database_sheet():
     worksheet = workbook["Filter_Database"]
     assert worksheet["A1"].value == "Filter ID"
     assert worksheet["A2"].value == "PF-001"
+    assert "ISO Class" in [cell.value for cell in worksheet[1]]
 
 
 def test_normalize_uploaded_database_imports_qty_per_ahu():
@@ -65,8 +67,10 @@ def test_normalize_uploaded_database_imports_qty_per_ahu():
                 "Filter ID": "PF-A",
                 "Stage": "Pre-filter",
                 "ISO Class": "ISO Coarse 70%",
+                "Size": "592x287x46",
                 "Qty/AHU": 20,
                 "DHC to final DP (g)": 600,
+                "Area (m2)": 1.2,
                 "Eurovent Avg DP (Pa)": 85,
                 "Mass Efficiency %": 0.7,
                 "Price/filter (VND)": 250000,
@@ -77,11 +81,15 @@ def test_normalize_uploaded_database_imports_qty_per_ahu():
     normalized = normalize_uploaded_database(dataframe)
 
     assert normalized.loc[0, "Filter ID"] == "PF-A"
+    assert normalized.loc[0, "ISO Class"] == "ISO Coarse 70%"
     assert normalized.loc[0, "Qty/AHU"] == 20
-    assert normalized.loc[0, "DHC (g)"] == 600
+    assert normalized.loc[0, "Width (mm)"] == 592
+    assert normalized.loc[0, "Height (mm)"] == 287
+    assert normalized.loc[0, "DHC/filter direct (g)"] == 600
+    assert normalized.loc[0, "Media area/filter (m2)"] == 1.2
     assert normalized.loc[0, "Avg DP (Pa)"] == 85
-    assert normalized.loc[0, "Mass Efficiency"] == 0.7
-    assert normalized.loc[0, "Price/filter"] == 250000
+    assert normalized.loc[0, "Mass Eff. %"] == 0.7
+    assert normalized.loc[0, "Price/filter (VND)"] == 250000
 
 
 def test_normalize_uploaded_database_detects_workbook_header_row():
@@ -99,4 +107,4 @@ def test_normalize_uploaded_database_detects_workbook_header_row():
     assert normalized.loc[0, "Filter ID"] == "PF-A"
     assert normalized.loc[0, "Stage"] == "Pre-filter"
     assert normalized.loc[0, "Qty/AHU"] == 20
-    assert normalized.loc[0, "DHC (g)"] == 600
+    assert normalized.loc[0, "DHC/filter direct (g)"] == 600
