@@ -860,7 +860,7 @@ def render_filter_database(records: list[FilterDatabaseRecord]) -> list[FilterDa
     render_filter_record_edit_tools(saved_df)
     saved_df = render_filter_record_delete_tools(saved_df)
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2 = st.columns([1, 2])
     if col1.button("Clear database", use_container_width=True):
         empty_df = pd.DataFrame(columns=list(DISPLAY_COLUMNS.values()))
         st.session_state.filter_database_data = empty_df
@@ -870,14 +870,7 @@ def render_filter_database(records: list[FilterDatabaseRecord]) -> list[FilterDa
         ) + 1
         st.rerun()
     col2.download_button(
-        "Download database CSV",
-        data=saved_df.to_csv(index=False).encode("utf-8-sig"),
-        file_name="filter_database.csv",
-        mime="text/csv",
-        use_container_width=True,
-    )
-    col3.download_button(
-        "Download database Excel",
+        "Download formatted Excel database",
         data=dataframe_to_excel_bytes(saved_df),
         file_name="filter_database.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
