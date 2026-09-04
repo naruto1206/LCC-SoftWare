@@ -7,7 +7,6 @@ import pandas as pd
 import streamlit as st
 
 from lcc_hvac_app.engine.models import FilterDatabaseRecord
-from lcc_hvac_app.project_io.filter_database_store import save_filter_database
 
 
 DATABASE_COLUMNS = [
@@ -248,10 +247,8 @@ def _row_value(row: pd.Series | None, column: str, default: Any = "") -> Any:
 
 
 def persist_filter_database_dataframe(dataframe: pd.DataFrame) -> None:
-    try:
-        save_filter_database(dataframe_to_records(normalize_display_dataframe(dataframe)))
-    except OSError as exc:
-        st.warning(f"Filter database was updated for this session, but could not be saved to disk: {exc}")
+    st.session_state.filter_database_data = normalize_display_dataframe(dataframe)
+    st.session_state.filter_database_session_only = True
 
 
 def remove_filter_database_rows(
@@ -677,7 +674,11 @@ def render_filter_record_edit_tools(saved_df: pd.DataFrame) -> None:
 def render_filter_database(records: list[FilterDatabaseRecord]) -> list[FilterDatabaseRecord]:
     st.subheader("Filter Database")
     st.caption(
-        "Upload an Excel filter database or edit rows manually. These values are stored in the project session."
+        "Upload an Excel filter database or edit rows manually. Changes stay in your own session, so different users do not overwrite each other."
+    )
+    st.info(
+        "Session database: upload or enter filters for this project, then download CSV/Excel if you want to keep a copy. "
+        "The shared GitHub database is not changed by online users."
     )
 
     uploaded_file = st.file_uploader(
