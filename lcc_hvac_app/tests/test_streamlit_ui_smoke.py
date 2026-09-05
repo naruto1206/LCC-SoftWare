@@ -65,3 +65,24 @@ render_scenario_editor(
         for selectbox in app_test.selectbox
         for option in selectbox.options
     )
+
+
+def test_dhc_entry_file_locks_calculation_method():
+    app_test = AppTest.from_file("streamlit_dhc_app.py")
+    app_test.session_state["active_page"] = "setup"
+    app_test.run(timeout=20)
+
+    assert not app_test.exception
+    assert app_test.session_state["project"].assumptions.calculation_method == "DHC-based"
+
+
+def test_filter_life_entry_file_locks_calculation_method():
+    app_test = AppTest.from_file("streamlit_filter_life_app.py")
+    app_test.session_state["active_page"] = "setup"
+    app_test.run(timeout=20)
+
+    assert not app_test.exception
+    assert (
+        app_test.session_state["project"].assumptions.calculation_method
+        == "Filter life-based"
+    )

@@ -554,6 +554,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
     form_key = selected_existing.replace(" ", "_").replace("/", "_").replace("\\", "_")
 
     with st.expander("Add or update one filter record", expanded=True):
+        calculation_method = current_calculation_method()
         st.caption("Complete all required fields before saving. Notes are optional.")
         col1, col2, col3 = st.columns(3)
         filter_id = col1.text_input(
@@ -595,14 +596,17 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             key=f"rated_airflow_{form_key}",
             help="Catalog or supplier rated airflow for one filter. Used for project airflow checking.",
         )
-        target_filter_life = col7.number_input(
-            "Target filter life (days)",
-            min_value=0.0,
-            value=float(_row_value(selected_row, "Target filter life (days)", 0.0)),
-            step=30.0,
-            key=f"target_filter_life_{form_key}",
-            help="Used by the Filter life-based calculation version when DHC is unavailable.",
-        )
+        if calculation_method == "Filter life-based":
+            target_filter_life = col7.number_input(
+                "Target filter life (days)",
+                min_value=0.0,
+                value=float(_row_value(selected_row, "Target filter life (days)", 0.0)),
+                step=30.0,
+                key=f"target_filter_life_{form_key}",
+                help="Used by this app to calculate replacement/year.",
+            )
+        else:
+            target_filter_life = float(_row_value(selected_row, "Target filter life (days)", 0.0))
         parsed_iso = parse_iso_class_efficiencies(iso_class)
 
         col8, col9, col10 = st.columns(3)
@@ -639,21 +643,25 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             step=1.0,
             key=f"qty_per_ahu_{form_key}",
         )
-        dhc_g = col11.number_input(
-            "DHC/filter direct (g)",
-            min_value=0.0,
-            value=float(_row_value(selected_row, "DHC/filter direct (g)", 0.0)),
-            step=50.0,
-            key=f"dhc_g_{form_key}",
-        )
-        direct_mass_efficiency = col12.number_input(
-            "Mass Eff. %",
-            min_value=0.0,
-            value=float(_row_value(selected_row, "Mass Eff. %", 0.0)),
-            step=0.01,
-            key=f"mass_efficiency_{form_key}",
-            help="Enter measured mass efficiency if available. If blank/zero, the app estimates it from ePM/Coarse below.",
-        )
+        if calculation_method == "DHC-based":
+            dhc_g = col11.number_input(
+                "DHC/filter direct (g)",
+                min_value=0.0,
+                value=float(_row_value(selected_row, "DHC/filter direct (g)", 0.0)),
+                step=50.0,
+                key=f"dhc_g_{form_key}",
+            )
+            direct_mass_efficiency = col12.number_input(
+                "Mass Eff. %",
+                min_value=0.0,
+                value=float(_row_value(selected_row, "Mass Eff. %", 0.0)),
+                step=0.01,
+                key=f"mass_efficiency_{form_key}",
+                help="Enter measured mass efficiency if available. If blank/zero, the app estimates it from Filter Class/ePM/Coarse.",
+            )
+        else:
+            dhc_g = float(_row_value(selected_row, "DHC/filter direct (g)", 0.0))
+            direct_mass_efficiency = float(_row_value(selected_row, "Mass Eff. %", 0.0))
 
         col13, col14, col15 = st.columns(3)
         initial_dp = col13.number_input(
@@ -682,39 +690,45 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             help="Recommended: ((Initial DP + Final DP) / 2) x 1.1.",
         )
 
-        col16, col17, col18, col19 = st.columns(4)
-        epm1_percent = col16.number_input(
-            "ePM1 %",
-            min_value=0.0,
-            max_value=100.0,
-            value=float(_row_value(selected_row, "ePM1 %", 0.0) or parsed_iso.get("ePM1 %", 0.0)),
-            step=1.0,
-            key=f"epm1_{form_key}",
-        )
-        epm25_percent = col17.number_input(
-            "ePM2.5 %",
-            min_value=0.0,
-            max_value=100.0,
-            value=float(_row_value(selected_row, "ePM2.5 %", 0.0) or parsed_iso.get("ePM2.5 %", 0.0)),
-            step=1.0,
-            key=f"epm25_{form_key}",
-        )
-        epm10_percent = col18.number_input(
-            "ePM10 %",
-            min_value=0.0,
-            max_value=100.0,
-            value=float(_row_value(selected_row, "ePM10 %", 0.0) or parsed_iso.get("ePM10 %", 0.0)),
-            step=1.0,
-            key=f"epm10_{form_key}",
-        )
-        coarse_percent = col19.number_input(
-            "ISO Coarse %",
-            min_value=0.0,
-            max_value=100.0,
-            value=float(_row_value(selected_row, "ISO Coarse %", 0.0) or parsed_iso.get("ISO Coarse %", 0.0)),
-            step=1.0,
-            key=f"coarse_{form_key}",
-        )
+        if calculation_method == "DHC-based":
+            col16, col17, col18, col19 = st.columns(4)
+            epm1_percent = col16.number_input(
+                "ePM1 %",
+                min_value=0.0,
+                max_value=100.0,
+                value=float(_row_value(selected_row, "ePM1 %", 0.0) or parsed_iso.get("ePM1 %", 0.0)),
+                step=1.0,
+                key=f"epm1_{form_key}",
+            )
+            epm25_percent = col17.number_input(
+                "ePM2.5 %",
+                min_value=0.0,
+                max_value=100.0,
+                value=float(_row_value(selected_row, "ePM2.5 %", 0.0) or parsed_iso.get("ePM2.5 %", 0.0)),
+                step=1.0,
+                key=f"epm25_{form_key}",
+            )
+            epm10_percent = col18.number_input(
+                "ePM10 %",
+                min_value=0.0,
+                max_value=100.0,
+                value=float(_row_value(selected_row, "ePM10 %", 0.0) or parsed_iso.get("ePM10 %", 0.0)),
+                step=1.0,
+                key=f"epm10_{form_key}",
+            )
+            coarse_percent = col19.number_input(
+                "ISO Coarse %",
+                min_value=0.0,
+                max_value=100.0,
+                value=float(_row_value(selected_row, "ISO Coarse %", 0.0) or parsed_iso.get("ISO Coarse %", 0.0)),
+                step=1.0,
+                key=f"coarse_{form_key}",
+            )
+        else:
+            epm1_percent = float(_row_value(selected_row, "ePM1 %", 0.0) or parsed_iso.get("ePM1 %", 0.0))
+            epm25_percent = float(_row_value(selected_row, "ePM2.5 %", 0.0) or parsed_iso.get("ePM2.5 %", 0.0))
+            epm10_percent = float(_row_value(selected_row, "ePM10 %", 0.0) or parsed_iso.get("ePM10 %", 0.0))
+            coarse_percent = float(_row_value(selected_row, "ISO Coarse %", 0.0) or parsed_iso.get("ISO Coarse %", 0.0))
 
         mass_efficiency, mass_efficiency_source = effective_mass_efficiency(
             direct_mass_efficiency,
@@ -726,9 +740,10 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             iso_class,
         )
         profile = environment_profile(current_outdoor_environment())
-        st.caption(
-            f"Effective Mass Eff.: {mass_efficiency * 100:,.2f}% ({mass_efficiency_source}) using {profile.label} dust profile."
-        )
+        if calculation_method == "DHC-based":
+            st.caption(
+                f"Effective Mass Eff.: {mass_efficiency * 100:,.2f}% ({mass_efficiency_source}) using {profile.label} dust profile."
+            )
 
         col20, col21 = st.columns([1, 2])
         price = col20.number_input(

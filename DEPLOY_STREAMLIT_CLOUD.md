@@ -8,7 +8,7 @@ Use this guide when you want customers or managers to open the app from a browse
 2. Go to `https://share.streamlit.io`.
 3. Create a new app.
 4. Select your GitHub repository and branch.
-5. Use this app entrypoint:
+5. Use this app entrypoint for the combined app:
 
 ```text
 streamlit_app.py
@@ -18,6 +18,32 @@ streamlit_app.py
 7. Deploy.
 
 Streamlit Cloud will install dependencies from the root `requirements.txt`.
+
+## Two Separate App Links
+
+This project also has two separate Streamlit entry files. Use these when you want two clean apps instead of one app with a calculation-version selector.
+
+### App 1: DHC-Based LCC
+
+Create one Streamlit Cloud app with this main file:
+
+```text
+streamlit_dhc_app.py
+```
+
+This app is locked to the DHC-based calculation. It uses DHC, dust concentration, outdoor environment, mass efficiency, pressure drop, filter price, labor/disposal cost, electricity price, operating hours, and fan efficiency.
+
+### App 2: Filter-Life-Based LCC
+
+Create another Streamlit Cloud app with this main file:
+
+```text
+streamlit_filter_life_app.py
+```
+
+This app is locked to the filter-life-based calculation. It uses the target filter life entered for each filter record instead of calculating life from DHC.
+
+After deployment, Streamlit Cloud will give you two different URLs, one for each app. Both apps can use the same GitHub repository and branch.
 
 ## Filter Database Workflow Online
 
@@ -50,6 +76,8 @@ Keep these files in GitHub:
 
 ```text
 streamlit_app.py
+streamlit_dhc_app.py
+streamlit_filter_life_app.py
 requirements.txt
 .streamlit/config.toml
 lcc_hvac_app/

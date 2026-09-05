@@ -84,9 +84,19 @@ PAGE_TITLES = {
 }
 
 
-def setup_page() -> None:
+def locked_calculation_method() -> str | None:
+    return st.session_state.get("locked_calculation_method")
+
+
+def apply_calculation_lock(project: Project) -> None:
+    locked_method = locked_calculation_method()
+    if locked_method:
+        project.assumptions.calculation_method = locked_method
+
+
+def setup_page(app_title: str = "LCC Filter System") -> None:
     st.set_page_config(
-        page_title="LCC Filter System",
+        page_title=app_title,
         layout="wide",
         initial_sidebar_state="expanded",
     )
@@ -415,6 +425,7 @@ def setup_page() -> None:
 def get_project() -> Project:
     if "project" not in st.session_state:
         st.session_state.project = create_new_project()
+    apply_calculation_lock(st.session_state.project)
     ensure_project_schema(st.session_state.project)
     return st.session_state.project
 
@@ -545,6 +556,7 @@ def create_new_project() -> Project:
 
 
 def set_project(project: Project) -> None:
+    apply_calculation_lock(project)
     st.session_state.project = project
     st.session_state.comparison = compare_scenarios(project.scenarios, project.assumptions)
 
@@ -586,11 +598,11 @@ def current_comparison(project: Project) -> dict[str, object]:
     return comparison
 
 
-def render_sidebar(project: Project) -> str:
+def render_sidebar(project: Project, app_title: str = "LCC HVAC Filter") -> str:
     if LOGO_PATH.exists():
         st.sidebar.image(str(LOGO_PATH), width="stretch")
     st.sidebar.markdown(
-        '<div class="sidebar-title">LCC HVAC Filter</div>',
+        f'<div class="sidebar-title">{app_title}</div>',
         unsafe_allow_html=True,
     )
     st.sidebar.markdown(
@@ -779,7 +791,10 @@ def render_setup_section(project: Project) -> None:
         project.project_info = render_project_info(project.project_info)
     with assumptions_tab:
         st.markdown('<div class="section-label">Step 2</div>', unsafe_allow_html=True)
-        project.assumptions = render_assumptions(project.assumptions)
+        project.assumptions = render_assumptions(
+            project.assumptions,
+            locked_method=locked_calculation_method(),
+        )
 
 
 def render_scenarios_section(project: Project) -> None:
@@ -869,11 +884,17 @@ def render_export(project: Project, comparison: dict[str, object]) -> None:
         st.rerun()
 
 
-def main() -> None:
-    setup_page()
+def main(
+    locked_method: str | None = None,
+    app_title: str = "LCC HVAC Filter",
+) -> None:
+    if locked_method:
+        st.session_state.locked_calculation_method = locked_method
+    setup_page(app_title)
     project = get_project()
+    apply_calculation_lock(project)
     project.project_info = sync_project_info_from_session(project.project_info)
-    page_key = render_sidebar(project)
+    page_key = render_sidebar(project, app_title)
     render_page_header(page_key)
     render_project_context(project, page_key)
     if "flash_message" in st.session_state:
