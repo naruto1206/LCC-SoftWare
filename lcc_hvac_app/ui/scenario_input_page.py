@@ -187,6 +187,7 @@ def _record_to_stage(
             record.height_mm,
         ),
         rated_airflow_m3_h_filter=record.rated_airflow_m3_h_filter,
+        target_filter_life_days=record.target_filter_life_days,
         filter_id=record.filter_id,
     )
 
@@ -361,7 +362,7 @@ def render_scenario_editor(
                 else "-",
             )
 
-            value_cols = st.columns(6)
+            value_cols = st.columns(7)
             effective_efficiency, efficiency_source = effective_mass_efficiency(
                 selected_record.mass_efficiency,
                 getattr(selected_record, "epm1_percent", 0.0),
@@ -377,6 +378,12 @@ def render_scenario_editor(
             value_cols[3].metric("Avg DP", f"{selected_record.avg_dp_pa:,.0f} Pa")
             value_cols[4].metric("Final DP", f"{selected_record.final_dp_pa:,.0f} Pa")
             value_cols[5].metric("Price", f"{selected_record.price_vnd_filter:,.0f}")
+            value_cols[6].metric(
+                "Target life",
+                f"{selected_record.target_filter_life_days:,.0f} days"
+                if selected_record.target_filter_life_days
+                else "-",
+            )
             st.caption(f"Mass efficiency source: {efficiency_source}")
 
             geometry_cols = st.columns(4)
@@ -414,6 +421,7 @@ def copy_scenario(source: Scenario, target_name: str) -> Scenario:
                 height_mm=getattr(stage, "height_mm", 0.0),
                 media_area_m2=getattr(stage, "media_area_m2", 0.0),
                 rated_airflow_m3_h_filter=getattr(stage, "rated_airflow_m3_h_filter", 0.0),
+                target_filter_life_days=getattr(stage, "target_filter_life_days", 0.0),
                 filter_id=getattr(stage, "filter_id", ""),
                 eurovent_iso_group=getattr(stage, "eurovent_iso_group", "ISO ePM1"),
                 eurovent_mx_g=getattr(stage, "eurovent_mx_g", 200.0),

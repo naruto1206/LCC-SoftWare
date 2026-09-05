@@ -29,6 +29,8 @@ STAGE_COLUMNS = [
     "rated_airflow_m3_h_filter",
     "airflow_per_filter_m3_h",
     "airflow_loading_percent",
+    "target_filter_life_days",
+    "filter_life_source",
     "width_mm",
     "height_mm",
     "face_area_m2",

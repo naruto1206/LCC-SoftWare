@@ -420,6 +420,8 @@ def get_project() -> Project:
 
 
 def ensure_project_schema(project: Project) -> None:
+    if not hasattr(project.assumptions, "calculation_method"):
+        project.assumptions.calculation_method = "DHC-based"
     if not hasattr(project.assumptions, "outdoor_environment"):
         project.assumptions.outdoor_environment = DEFAULT_OUTDOOR_ENVIRONMENT
     if not hasattr(project.assumptions, "advanced_dust_override"):
@@ -440,6 +442,8 @@ def ensure_project_schema(project: Project) -> None:
                 stage.media_area_m2 = 0.0
             if not hasattr(stage, "rated_airflow_m3_h_filter"):
                 stage.rated_airflow_m3_h_filter = 0.0
+            if not hasattr(stage, "target_filter_life_days"):
+                stage.target_filter_life_days = 0.0
             if not hasattr(stage, "eurovent_iso_group"):
                 stage.eurovent_iso_group = "ISO ePM1"
             if not hasattr(stage, "eurovent_mx_g"):
@@ -472,6 +476,7 @@ def stage_from_filter_record(
         height_mm=record.height_mm,
         media_area_m2=record.media_area_m2,
         rated_airflow_m3_h_filter=record.rated_airflow_m3_h_filter,
+        target_filter_life_days=record.target_filter_life_days,
         filter_id=record.filter_id,
     )
 

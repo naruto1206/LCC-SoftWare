@@ -17,6 +17,7 @@ FILTER_DATABASE_FIELDS = [
     "filter_class",
     "qty_per_ahu",
     "rated_airflow_m3_h_filter",
+    "target_filter_life_days",
     "width_mm",
     "height_mm",
     "media_area_m2",
@@ -41,6 +42,7 @@ LEGACY_FILTER_DATABASE_FIELDS = [
 NUMBER_FIELDS = {
     "qty_per_ahu",
     "rated_airflow_m3_h_filter",
+    "target_filter_life_days",
     "width_mm",
     "height_mm",
     "media_area_m2",

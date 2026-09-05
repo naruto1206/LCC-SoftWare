@@ -32,7 +32,7 @@ FORMULA_REFERENCE = [
     },
     {
         "Result": "Filter life",
-        "Formula": "Dust holding capacity / Dust captured",
+        "Formula": "DHC-based: Dust holding capacity / Dust captured. Filter life-based: Target filter life from Filter Database.",
         "Unit": "days",
     },
     {

@@ -10,6 +10,13 @@ from lcc_hvac_app.engine.models import Assumptions
 
 
 def render_assumptions(assumptions: Assumptions) -> Assumptions:
+    calculation_options = ["DHC-based", "Filter life-based"]
+    current_calculation = getattr(assumptions, "calculation_method", "DHC-based")
+    calculation_index = (
+        calculation_options.index(current_calculation)
+        if current_calculation in calculation_options
+        else 0
+    )
     current_environment = getattr(assumptions, "outdoor_environment", "Country town")
     environment_options = list(OUTDOOR_ENVIRONMENT_PROFILES.keys())
     environment_index = (
@@ -20,6 +27,12 @@ def render_assumptions(assumptions: Assumptions) -> Assumptions:
     system_col, cost_col, service_col = st.columns(3)
     with system_col:
         st.markdown("**System Operation**")
+        calculation_method = st.selectbox(
+            "Calculation version",
+            calculation_options,
+            index=calculation_index,
+            help="DHC-based uses DHC/dust captured. Filter life-based uses target filter life for replacement frequency.",
+        )
         airflow = st.number_input("Airflow per AHU (m3/h)", min_value=0.0, value=float(assumptions.airflow_m3_h_per_ahu), step=1000.0)
         ahu = st.number_input("Number of AHU", min_value=1, value=int(assumptions.number_of_ahu), step=1)
         hours = st.number_input("Operating hours/day", min_value=0.0, max_value=24.0, value=float(assumptions.operating_hours_day), step=1.0)
@@ -67,6 +80,7 @@ def render_assumptions(assumptions: Assumptions) -> Assumptions:
         period = st.number_input("Analysis period (years)", min_value=1, value=int(assumptions.analysis_period_years), step=1)
 
     return Assumptions(
+        calculation_method=calculation_method,
         airflow_m3_h_per_ahu=airflow,
         number_of_ahu=ahu,
         operating_hours_day=hours,

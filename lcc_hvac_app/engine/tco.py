@@ -43,7 +43,13 @@ def calculate_stage_tco(
 ) -> dict[str, float | str]:
     dust_captured = calculate_dust_captured(dust_entering_day_filter, stage.normalized_efficiency())
     dust_to_next = calculate_dust_to_next_stage(dust_entering_day_filter, dust_captured)
-    life_days = calculate_filter_life_days(stage.dhc_g, dust_captured)
+    calculation_method = getattr(assumptions, "calculation_method", "DHC-based")
+    if calculation_method == "Filter life-based" and stage.target_filter_life_days > 0:
+        life_days = stage.target_filter_life_days
+        filter_life_source = "Target filter life"
+    else:
+        life_days = calculate_filter_life_days(stage.dhc_g, dust_captured)
+        filter_life_source = "DHC"
     replacement_year = calculate_replacement_per_year(
         assumptions.operating_days_year, life_days
     )
@@ -90,6 +96,8 @@ def calculate_stage_tco(
         "stage": stage.stage,
         "qty_per_ahu": stage.qty_per_ahu,
         "rated_airflow_m3_h_filter": stage.rated_airflow_m3_h_filter,
+        "target_filter_life_days": stage.target_filter_life_days,
+        "filter_life_source": filter_life_source,
         "width_mm": stage.width_mm,
         "height_mm": stage.height_mm,
         "face_area_m2": face_area,

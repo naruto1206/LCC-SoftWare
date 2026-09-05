@@ -44,8 +44,6 @@ def validate_scenario(scenario: Scenario) -> list[str]:
             warnings.append(f"{label}: stage name is required.")
         if stage.qty_per_ahu <= 0:
             warnings.append(f"{label}: Qty/AHU must be greater than 0.")
-        if stage.dhc_g <= 0:
-            warnings.append(f"{label}: DHC must be greater than 0.")
         efficiency = stage.normalized_efficiency()
         if efficiency < 0 or efficiency > 1:
             warnings.append(f"{label}: Mass efficiency must be between 0 and 1, or 0 and 100%.")
@@ -58,6 +56,7 @@ def validate_scenario(scenario: Scenario) -> list[str]:
 
 def validate_project(assumptions: Assumptions, scenarios: list[Scenario]) -> list[str]:
     warnings = validate_assumptions(assumptions)
+    calculation_method = getattr(assumptions, "calculation_method", "DHC-based")
     names_seen: set[str] = set()
     for scenario in scenarios:
         normalized_name = scenario.name.strip().lower()
@@ -67,4 +66,11 @@ def validate_project(assumptions: Assumptions, scenarios: list[Scenario]) -> lis
             warnings.append(f"{scenario.name}: scenario names must be unique.")
         names_seen.add(normalized_name)
         warnings.extend(validate_scenario(scenario))
+        for index, stage in enumerate(scenario.stages, start=1):
+            label = f"{scenario.name} / row {index} / {stage.stage}"
+            if calculation_method == "Filter life-based":
+                if getattr(stage, "target_filter_life_days", 0.0) <= 0:
+                    warnings.append(f"{label}: Target filter life must be greater than 0.")
+            elif stage.dhc_g <= 0:
+                warnings.append(f"{label}: DHC must be greater than 0.")
     return warnings

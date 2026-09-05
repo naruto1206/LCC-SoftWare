@@ -29,6 +29,7 @@ DATABASE_COLUMNS = [
     "filter_class",
     "qty_per_ahu",
     "rated_airflow_m3_h_filter",
+    "target_filter_life_days",
     "width_mm",
     "height_mm",
     "media_area_m2",
@@ -54,6 +55,7 @@ DISPLAY_COLUMNS = {
     "filter_class": "Filter Class",
     "qty_per_ahu": "Qty/AHU",
     "rated_airflow_m3_h_filter": "Rated airflow/filter (m3/h)",
+    "target_filter_life_days": "Target filter life (days)",
     "width_mm": "Width (mm)",
     "height_mm": "Height (mm)",
     "media_area_m2": "Media area/filter (m2)",
@@ -107,6 +109,15 @@ COLUMN_ALIASES = {
         "airflow per filter",
         "air flow",
         "airflow",
+    ],
+    "target_filter_life_days": [
+        "target filter life",
+        "target filter life (days)",
+        "filter life",
+        "filter life days",
+        "life days",
+        "replacement interval",
+        "replacement interval days",
     ],
     "width_mm": ["width", "width mm", "width (mm)", "w", "w mm"],
     "height_mm": ["height", "height mm", "height (mm)", "h", "h mm"],
@@ -203,6 +214,7 @@ def empty_display_row() -> dict[str, Any]:
             "DHC/filter direct (g)",
             "Qty/AHU",
             "Rated airflow/filter (m3/h)",
+            "Target filter life (days)",
             "Width (mm)",
             "Height (mm)",
             "Media area/filter (m2)",
@@ -229,6 +241,14 @@ def calculate_media_area_m2(width_mm: Any, height_mm: Any) -> float:
     if width <= 0 or height <= 0:
         return 0.0
     return round(width * height / 1_000_000, 4)
+
+
+def calculate_recommended_avg_dp_pa(initial_dp_pa: Any, final_dp_pa: Any) -> float:
+    initial_dp = _to_float(initial_dp_pa)
+    final_dp = _to_float(final_dp_pa)
+    if initial_dp <= 0 or final_dp <= 0:
+        return 0.0
+    return round(((initial_dp + final_dp) / 2.0) * 1.1)
 
 
 def parse_iso_class_efficiencies(iso_class: Any) -> dict[str, float]:
@@ -345,6 +365,16 @@ def normalize_display_dataframe(dataframe: pd.DataFrame | None) -> pd.DataFrame:
         normalized["Media area/filter (m2)"] = [
             calculated if calculated > 0 and existing <= 0 else existing
             for calculated, existing in zip(calculated_area, current_area, strict=False)
+        ]
+    if {"Initial DP (Pa)", "Final DP (Pa)", "Avg DP (Pa)"}.issubset(normalized.columns):
+        current_avg = normalized["Avg DP (Pa)"].apply(_to_float)
+        calculated_avg = normalized.apply(
+            lambda row: calculate_recommended_avg_dp_pa(row["Initial DP (Pa)"], row["Final DP (Pa)"]),
+            axis=1,
+        )
+        normalized["Avg DP (Pa)"] = [
+            calculated if calculated > 0 and existing <= 0 else existing
+            for calculated, existing in zip(calculated_avg, current_avg, strict=False)
         ]
     normalized = recalculate_mass_efficiency_dataframe(normalized)
     return normalized
@@ -471,7 +501,6 @@ def _missing_filter_record_fields(row: dict[str, Any]) -> list[str]:
         "Width (mm)",
         "Height (mm)",
         "Rated airflow/filter (m3/h)",
-        "DHC/filter direct (g)",
         "Initial DP (Pa)",
         "Avg DP (Pa)",
         "Final DP (Pa)",
@@ -485,6 +514,12 @@ def _missing_filter_record_fields(row: dict[str, Any]) -> list[str]:
     for field_name in required_positive_fields:
         if _to_float(row.get(field_name, 0)) <= 0:
             missing.append(field_name)
+
+    if (
+        _to_float(row.get("DHC/filter direct (g)", 0)) <= 0
+        and _to_float(row.get("Target filter life (days)", 0)) <= 0
+    ):
+        missing.append("DHC/filter direct (g) or Target filter life (days)")
 
     mass_efficiency, _source = calculate_effective_mass_efficiency_for_row(row)
     if mass_efficiency <= 0:
@@ -531,7 +566,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             key=f"model_{form_key}",
         )
 
-        col4, col5, col6 = st.columns(3)
+        col4, col5, col6, col7 = st.columns(4)
         stage = col4.selectbox(
             "Stage",
             STAGE_OPTIONS,
@@ -554,17 +589,25 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             key=f"rated_airflow_{form_key}",
             help="Catalog or supplier rated airflow for one filter. Used for project airflow checking.",
         )
+        target_filter_life = col7.number_input(
+            "Target filter life (days)",
+            min_value=0.0,
+            value=float(_row_value(selected_row, "Target filter life (days)", 0.0)),
+            step=30.0,
+            key=f"target_filter_life_{form_key}",
+            help="Used by the Filter life-based calculation version when DHC is unavailable.",
+        )
         parsed_iso = parse_iso_class_efficiencies(iso_class)
 
-        col7, col8, col9 = st.columns(3)
-        width_mm = col7.number_input(
+        col8, col9, col10 = st.columns(3)
+        width_mm = col8.number_input(
             "Width (mm)",
             min_value=0.0,
             value=float(_row_value(selected_row, "Width (mm)", 0.0)),
             step=1.0,
             key=f"width_mm_{form_key}",
         )
-        height_mm = col8.number_input(
+        height_mm = col9.number_input(
             "Height (mm)",
             min_value=0.0,
             value=float(_row_value(selected_row, "Height (mm)", 0.0)),
@@ -572,7 +615,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             key=f"height_mm_{form_key}",
         )
         media_area = calculate_media_area_m2(width_mm, height_mm)
-        col9.number_input(
+        col10.number_input(
             "Media area/filter (m2)",
             min_value=0.0,
             value=media_area,
@@ -614,19 +657,23 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             step=5.0,
             key=f"initial_dp_{form_key}",
         )
-        avg_dp = col14.number_input(
-            "Avg DP (Pa)",
-            min_value=0.0,
-            value=float(_row_value(selected_row, "Avg DP (Pa)", 0.0)),
-            step=5.0,
-            key=f"avg_dp_{form_key}",
-        )
-        final_dp = col15.number_input(
+        final_dp = col14.number_input(
             "Final DP (Pa)",
             min_value=0.0,
             value=float(_row_value(selected_row, "Final DP (Pa)", 0.0)),
             step=5.0,
             key=f"final_dp_{form_key}",
+        )
+        avg_dp = col15.number_input(
+            "Avg DP (Pa)",
+            min_value=0.0,
+            value=float(
+                _row_value(selected_row, "Avg DP (Pa)", 0.0)
+                or calculate_recommended_avg_dp_pa(initial_dp, final_dp)
+            ),
+            step=5.0,
+            key=f"avg_dp_{form_key}",
+            help="Recommended: ((Initial DP + Final DP) / 2) x 1.1.",
         )
 
         col16, col17, col18, col19 = st.columns(4)
@@ -699,6 +746,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             "Filter Class": iso_class,
             "Qty/AHU": qty_per_ahu,
             "Rated airflow/filter (m3/h)": rated_airflow,
+            "Target filter life (days)": target_filter_life,
             "Width (mm)": width_mm,
             "Height (mm)": height_mm,
             "Media area/filter (m2)": media_area,
@@ -760,6 +808,7 @@ def dataframe_to_records(dataframe: pd.DataFrame) -> list[FilterDatabaseRecord]:
                 rated_airflow_m3_h_filter=_to_float(
                     row.get("rated_airflow_m3_h_filter", 0)
                 ),
+                target_filter_life_days=_to_float(row.get("target_filter_life_days", 0)),
                 width_mm=_to_float(row.get("width_mm", 0)),
                 height_mm=_to_float(row.get("height_mm", 0)),
                 media_area_m2=_to_float(row.get("media_area_m2", 0)),
@@ -853,6 +902,7 @@ def normalize_uploaded_database(dataframe: pd.DataFrame) -> pd.DataFrame:
         "dhc_g",
         "qty_per_ahu",
         "rated_airflow_m3_h_filter",
+        "target_filter_life_days",
         "width_mm",
         "height_mm",
         "media_area_m2",
@@ -921,6 +971,7 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
         "Filter Class": 18,
         "Qty/AHU": 12,
         "Rated airflow/filter (m3/h)": 24,
+        "Target filter life (days)": 22,
         "Width (mm)": 12,
         "Height (mm)": 12,
         "Media area/filter (m2)": 20,
@@ -940,6 +991,7 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
     number_formats = {
         "Qty/AHU": "0",
         "Rated airflow/filter (m3/h)": "0",
+        "Target filter life (days)": "0",
         "Width (mm)": "0",
         "Height (mm)": "0",
         "Media area/filter (m2)": "0.00",
@@ -962,6 +1014,7 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
         "Filter Class": required_fill,
         "Qty/AHU": dimension_fill,
         "Rated airflow/filter (m3/h)": dimension_fill,
+        "Target filter life (days)": pressure_fill,
         "Width (mm)": dimension_fill,
         "Height (mm)": dimension_fill,
         "Media area/filter (m2)": dimension_fill,
@@ -988,6 +1041,7 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
         "ISO Coarse %": "Optional coarse arrestance value used to estimate Mass Eff. when direct Mass Eff. is not available.",
         "Price/filter (VND)": "Enter price for one filter, not total project price.",
         "Rated airflow/filter (m3/h)": "Catalog or supplier rated airflow for one filter. The app compares this with project airflow/filter.",
+        "Target filter life (days)": "Used by the Filter life-based calculation version to calculate replacement/year.",
     }
 
     for cell in worksheet[1]:
@@ -1057,6 +1111,18 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
                 f"=IF(AND({width_letter}{row}>0,{height_letter}{row}>0),"
                 f"ROUND({width_letter}{row}*{height_letter}{row}/1000000,4),0)"
             )
+
+    if all(header in headers for header in ["Initial DP (Pa)", "Final DP (Pa)", "Avg DP (Pa)"]):
+        initial_dp_letter = get_column_letter(headers.index("Initial DP (Pa)") + 1)
+        final_dp_letter = get_column_letter(headers.index("Final DP (Pa)") + 1)
+        avg_dp_letter = get_column_letter(headers.index("Avg DP (Pa)") + 1)
+        for row in range(2, max_row + 1):
+            avg_dp_cell = worksheet[f"{avg_dp_letter}{row}"]
+            if _to_float(avg_dp_cell.value) <= 0:
+                avg_dp_cell.value = (
+                    f"=IF(AND({initial_dp_letter}{row}>0,{final_dp_letter}{row}>0),"
+                    f"ROUND((({initial_dp_letter}{row}+{final_dp_letter}{row})/2)*1.1,0),0)"
+                )
 
     required_headers = ["Filter ID", "Supplier", "Stage", "Filter model / description", "Filter Class"]
     for required_header in required_headers:

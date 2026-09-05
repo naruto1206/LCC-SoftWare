@@ -65,7 +65,8 @@ def test_dataframe_to_excel_bytes_exports_filter_database_sheet():
     assert worksheet["A2"].fill.fgColor.rgb == "00DCFCE7"
     assert worksheet.freeze_panes == "A2"
     assert len(worksheet.data_validations.dataValidation) >= 1
-    assert worksheet["J2"].value == "=IF(AND(H2>0,I2>0),ROUND(H2*I2/1000000,4),0)"
+    assert worksheet["K2"].value == "=IF(AND(I2>0,J2>0),ROUND(I2*J2/1000000,4),0)"
+    assert worksheet["N2"].value == "=IF(AND(M2>0,O2>0),ROUND(((M2+O2)/2)*1.1,0),0)"
     assert "ePM1 %" in [cell.value for cell in worksheet[1]]
     assert "Mass Eff. Source" in [cell.value for cell in worksheet[1]]
     assert any(
@@ -101,6 +102,7 @@ def test_normalize_uploaded_database_imports_qty_per_ahu():
                 "Size": "592x287x46",
                 "Qty/AHU": 20,
                 "Rated airflow/filter (m3/h)": 1000,
+                "Target filter life (days)": 180,
                 "DHC to final DP (g)": 600,
                 "Area (m2)": 1.2,
                 "Eurovent Avg DP (Pa)": 85,
@@ -116,6 +118,7 @@ def test_normalize_uploaded_database_imports_qty_per_ahu():
     assert normalized.loc[0, "Filter Class"] == "ISO Coarse 70%"
     assert normalized.loc[0, "Qty/AHU"] == 20
     assert normalized.loc[0, "Rated airflow/filter (m3/h)"] == 1000
+    assert normalized.loc[0, "Target filter life (days)"] == 180
     assert normalized.loc[0, "Width (mm)"] == 592
     assert normalized.loc[0, "Height (mm)"] == 287
     assert normalized.loc[0, "DHC/filter direct (g)"] == 600
@@ -123,6 +126,23 @@ def test_normalize_uploaded_database_imports_qty_per_ahu():
     assert normalized.loc[0, "Avg DP (Pa)"] == 85
     assert normalized.loc[0, "Mass Eff. %"] == 70
     assert normalized.loc[0, "Price/filter (VND)"] == 250000
+
+
+def test_normalize_uploaded_database_calculates_avg_dp_when_blank():
+    dataframe = pd.DataFrame(
+        [
+            {
+                "Filter ID": "PF-B",
+                "Stage": "Pre-filter",
+                "Initial DP (Pa)": 50,
+                "Final DP (Pa)": 250,
+            }
+        ]
+    )
+
+    normalized = normalize_uploaded_database(dataframe)
+
+    assert normalized.loc[0, "Avg DP (Pa)"] == 165
 
 
 def test_normalize_uploaded_database_estimates_mass_efficiency_from_epm():

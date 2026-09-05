@@ -18,6 +18,7 @@ class ProjectInfo:
 
 @dataclass
 class Assumptions:
+    calculation_method: str = "DHC-based"
     airflow_m3_h_per_ahu: float = 20000.0
     number_of_ahu: int = 1
     operating_hours_day: float = 24.0
@@ -47,6 +48,7 @@ class FilterStage:
     height_mm: float = 0.0
     media_area_m2: float = 0.0
     rated_airflow_m3_h_filter: float = 0.0
+    target_filter_life_days: float = 0.0
     filter_id: str = ""
     eurovent_iso_group: str = "ISO ePM1"
     eurovent_mx_g: float = 200.0
@@ -69,6 +71,7 @@ class FilterDatabaseRecord:
     filter_class: str = ""
     qty_per_ahu: float = 1.0
     rated_airflow_m3_h_filter: float = 0.0
+    target_filter_life_days: float = 0.0
     width_mm: float = 0.0
     height_mm: float = 0.0
     media_area_m2: float = 0.0
@@ -125,6 +128,7 @@ def default_filter_database() -> list[FilterDatabaseRecord]:
             filter_class="G4 / ISO Coarse",
             qty_per_ahu=8,
             rated_airflow_m3_h_filter=2500,
+            target_filter_life_days=90,
             dhc_g=450,
             initial_dp_pa=45,
             avg_dp_pa=75,
@@ -141,6 +145,7 @@ def default_filter_database() -> list[FilterDatabaseRecord]:
             filter_class="F8 / ePM1",
             qty_per_ahu=8,
             rated_airflow_m3_h_filter=2500,
+            target_filter_life_days=180,
             dhc_g=650,
             initial_dp_pa=80,
             avg_dp_pa=120,
@@ -157,6 +162,7 @@ def default_filter_database() -> list[FilterDatabaseRecord]:
             filter_class="H13",
             qty_per_ahu=4,
             rated_airflow_m3_h_filter=2500,
+            target_filter_life_days=365,
             dhc_g=900,
             initial_dp_pa=140,
             avg_dp_pa=220,

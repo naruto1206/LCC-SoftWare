@@ -51,7 +51,7 @@ FORMULA_REFERENCE = [
     },
     {
         "Formula name": "Filter life",
-        "Formula": "DHC / Dust captured per day",
+        "Formula": "DHC-based: DHC / Dust captured per day. Filter life-based: Target filter life from Filter Database.",
         "Unit": "days",
     },
     {
@@ -97,6 +97,7 @@ def _project_summary_rows(project: Project, comparison: dict[str, Any]) -> list[
         {"Item": "Engineer", "Value": info.engineer},
         {"Item": "Date", "Value": info.date},
         {"Item": "Currency", "Value": info.currency},
+        {"Item": "Calculation version", "Value": assumptions.calculation_method},
         {"Item": "Airflow per AHU", "Value": assumptions.airflow_m3_h_per_ahu},
         {"Item": "Number of AHU", "Value": assumptions.number_of_ahu},
         {"Item": "Outdoor Environment", "Value": assumptions.outdoor_environment},

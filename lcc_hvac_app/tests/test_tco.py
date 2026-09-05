@@ -109,3 +109,32 @@ def test_stage_tco_includes_geometry_checks():
     assert stage["airflow_loading_percent"] == 100
     assert round(stage["face_velocity_m_s"], 2) == 0.79
     assert round(stage["media_velocity_m_s"], 2) == 0.79
+
+
+def test_filter_life_based_method_uses_target_life_when_dhc_is_missing():
+    assumptions = Assumptions(
+        calculation_method="Filter life-based",
+        airflow_m3_h_per_ahu=20000,
+        operating_days_year=360,
+        dust_concentration_mg_m3=0.3,
+    )
+    scenario = Scenario(
+        "Life based",
+        [
+            FilterStage(
+                "Fine-filter",
+                qty_per_ahu=20,
+                dhc_g=0,
+                mass_efficiency=0.7,
+                avg_dp_pa=100,
+                price_vnd_filter=100000,
+                target_filter_life_days=180,
+            )
+        ],
+    )
+
+    stage = calculate_scenario_tco(scenario, assumptions)["stages"][0]
+
+    assert stage["life_days"] == 180
+    assert stage["filter_life_source"] == "Target filter life"
+    assert stage["replacement_year"] == 2
