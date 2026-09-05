@@ -51,7 +51,7 @@ DISPLAY_COLUMNS = {
     "supplier": "Supplier",
     "stage": "Stage",
     "model": "Filter model / description",
-    "filter_class": "ISO Class",
+    "filter_class": "Filter Class",
     "qty_per_ahu": "Qty/AHU",
     "rated_airflow_m3_h_filter": "Rated airflow/filter (m3/h)",
     "width_mm": "Width (mm)",
@@ -82,6 +82,7 @@ STAGE_OPTIONS = [
 
 ISO_CLASS_OPTIONS = (
     [""]
+    + ["E10", "E11", "E12", "H13", "H14", "U15", "U16", "U17"]
     + [f"ISO Coarse {value}%" for value in range(10, 101, 5)]
     + [f"ISO ePM10 {value}%" for value in range(50, 101, 5)]
     + [f"ISO ePM2.5 {value}%" for value in range(50, 101, 5)]
@@ -232,6 +233,21 @@ def calculate_media_area_m2(width_mm: Any, height_mm: Any) -> float:
 
 def parse_iso_class_efficiencies(iso_class: Any) -> dict[str, float]:
     text = str(iso_class or "").strip()
+    en1822 = {
+        "E10": 85.0,
+        "E11": 95.0,
+        "E12": 99.5,
+        "H13": 99.95,
+        "H14": 99.995,
+        "U15": 99.9995,
+        "U16": 99.99995,
+        "U17": 99.999995,
+    }
+    upper_text = text.upper()
+    for class_name, value in en1822.items():
+        if re.search(rf"\b{class_name}\b", upper_text):
+            return {"EN1822 %": value}
+
     match = re.search(r"(\d+(?:\.\d+)?)\s*%", text)
     if match is None:
         return {}
@@ -257,7 +273,7 @@ def current_outdoor_environment() -> str:
 def calculate_effective_mass_efficiency_for_row(row: pd.Series | dict[str, Any]) -> tuple[float, str]:
     source = str(row.get("Mass Eff. Source", "") or "")
     direct = 0.0 if source.startswith("Estimated") else row.get("Mass Eff. %", 0.0)
-    parsed_iso = parse_iso_class_efficiencies(row.get("ISO Class", ""))
+    parsed_iso = parse_iso_class_efficiencies(row.get("Filter Class", ""))
     epm1 = row.get("ePM1 %", 0.0) or parsed_iso.get("ePM1 %", 0.0)
     epm25 = row.get("ePM2.5 %", 0.0) or parsed_iso.get("ePM2.5 %", 0.0)
     epm10 = row.get("ePM10 %", 0.0) or parsed_iso.get("ePM10 %", 0.0)
@@ -269,6 +285,7 @@ def calculate_effective_mass_efficiency_for_row(row: pd.Series | dict[str, Any])
         epm10,
         coarse,
         current_outdoor_environment(),
+        row.get("Filter Class", ""),
     )
 
 
@@ -298,8 +315,9 @@ def normalize_display_dataframe(dataframe: pd.DataFrame | None) -> pd.DataFrame:
     normalized = dataframe.copy()
     if "Model" in normalized.columns and "Filter model / description" not in normalized.columns:
         normalized = normalized.rename(columns={"Model": "Filter model / description"})
-    if "Class" in normalized.columns and "ISO Class" not in normalized.columns:
-        normalized = normalized.rename(columns={"Class": "ISO Class"})
+    for legacy_column in ["ISO Class", "Class"]:
+        if legacy_column in normalized.columns and "Filter Class" not in normalized.columns:
+            normalized = normalized.rename(columns={legacy_column: "Filter Class"})
     if "Size" in normalized.columns:
         sizes = normalized["Size"].fillna("").astype(str).str.extract(
             r"(?P<width>\d+(?:\.\d+)?)\s*x\s*(?P<height>\d+(?:\.\d+)?)",
@@ -446,7 +464,7 @@ def _missing_filter_record_fields(row: dict[str, Any]) -> list[str]:
         "Supplier",
         "Stage",
         "Filter model / description",
-        "ISO Class",
+        "Filter Class",
     ]
     required_positive_fields = [
         "Qty/AHU",
@@ -520,13 +538,13 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             index=_option_index(STAGE_OPTIONS, _row_value(selected_row, "Stage")),
             key=f"stage_{form_key}",
         )
-        iso_class_options = _choice_options(ISO_CLASS_OPTIONS, current_df, "ISO Class")
+        filter_class_options = _choice_options(ISO_CLASS_OPTIONS, current_df, "Filter Class")
         iso_class = col5.selectbox(
-            "ISO Class",
-            iso_class_options,
-            index=_option_index(iso_class_options, _row_value(selected_row, "ISO Class")),
+            "Filter Class",
+            filter_class_options,
+            index=_option_index(filter_class_options, _row_value(selected_row, "Filter Class")),
             key=f"iso_class_{form_key}",
-            help="Reference only. This field helps identify the selected filter and is not used directly in LCC calculation.",
+            help="ISO 16890 or EN1822 class. Used to identify the filter and estimate Mass Eff. when direct Mass Eff. is missing.",
         )
         rated_airflow = col6.number_input(
             "Rated airflow/filter (m3/h)",
@@ -678,7 +696,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             "Supplier": supplier,
             "Stage": stage,
             "Filter model / description": model,
-            "ISO Class": iso_class,
+            "Filter Class": iso_class,
             "Qty/AHU": qty_per_ahu,
             "Rated airflow/filter (m3/h)": rated_airflow,
             "Width (mm)": width_mm,
@@ -900,7 +918,7 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
         "Supplier": 18,
         "Stage": 20,
         "Filter model / description": 34,
-        "ISO Class": 18,
+        "Filter Class": 18,
         "Qty/AHU": 12,
         "Rated airflow/filter (m3/h)": 24,
         "Width (mm)": 12,
@@ -941,7 +959,7 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
         "Supplier": required_fill,
         "Stage": required_fill,
         "Filter model / description": required_fill,
-        "ISO Class": required_fill,
+        "Filter Class": required_fill,
         "Qty/AHU": dimension_fill,
         "Rated airflow/filter (m3/h)": dimension_fill,
         "Width (mm)": dimension_fill,
@@ -1013,7 +1031,7 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
         worksheet.add_data_validation(validation)
         validation.add(f"{stage_letter}2:{stage_letter}{max_row}")
 
-    iso_class_column = headers.index("ISO Class") + 1 if "ISO Class" in headers else None
+    iso_class_column = headers.index("Filter Class") + 1 if "Filter Class" in headers else None
     if iso_class_column is not None:
         iso_class_letter = get_column_letter(iso_class_column)
         iso_count = len([option for option in ISO_CLASS_OPTIONS if option])
@@ -1023,10 +1041,10 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
             allow_blank=False,
             showErrorMessage=True,
         )
-        validation.error = "Please choose one of the approved ISO classes."
-        validation.errorTitle = "Invalid ISO class"
-        validation.prompt = "Select ISO Coarse, ISO ePM10, ISO ePM2.5, or ISO ePM1 class."
-        validation.promptTitle = "ISO class"
+        validation.error = "Please choose one of the approved filter classes."
+        validation.errorTitle = "Invalid filter class"
+        validation.prompt = "Select E10/E11/E12, ISO Coarse, ISO ePM10, ISO ePM2.5, or ISO ePM1."
+        validation.promptTitle = "Filter class"
         worksheet.add_data_validation(validation)
         validation.add(f"{iso_class_letter}2:{iso_class_letter}{max_row}")
 
@@ -1040,7 +1058,7 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
                 f"ROUND({width_letter}{row}*{height_letter}{row}/1000000,4),0)"
             )
 
-    required_headers = ["Filter ID", "Supplier", "Stage", "Filter model / description", "ISO Class"]
+    required_headers = ["Filter ID", "Supplier", "Stage", "Filter model / description", "Filter Class"]
     for required_header in required_headers:
         if required_header not in headers:
             continue

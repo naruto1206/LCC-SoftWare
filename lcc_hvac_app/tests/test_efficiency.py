@@ -48,6 +48,7 @@ def test_estimate_mass_efficiency_uses_outdoor_environment_profile():
 def test_parse_iso_class_distinguishes_epm10_from_epm1():
     assert parse_iso_class_efficiencies("ISO ePM10 60%") == {"epm10_percent": 60.0}
     assert parse_iso_class_efficiencies("ISO ePM1 50%") == {"epm1_percent": 50.0}
+    assert parse_iso_class_efficiencies("E12") == {"en1822_percent": 99.5}
 
 
 def test_effective_mass_efficiency_uses_iso_class_when_epm_fields_are_empty():
@@ -59,3 +60,14 @@ def test_effective_mass_efficiency_uses_iso_class_when_epm_fields_are_empty():
 
     assert efficiency == 0.5
     assert source == "Estimated from ePM/Coarse"
+
+
+def test_effective_mass_efficiency_uses_en1822_class_when_epm_fields_are_empty():
+    efficiency, source = effective_mass_efficiency(
+        direct_mass_efficiency=0,
+        outdoor_environment="Country town",
+        iso_class="E10",
+    )
+
+    assert efficiency == 0.85
+    assert source == "Estimated from EN1822 class"

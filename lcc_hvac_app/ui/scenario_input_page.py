@@ -353,7 +353,7 @@ def render_scenario_editor(
             info_cols = st.columns(4)
             info_cols[0].metric("Stage", selected_record.stage or "-")
             info_cols[1].metric("Model", selected_record.model or "-")
-            info_cols[2].metric("ISO Class", selected_record.filter_class or "-")
+            info_cols[2].metric("Filter Class", selected_record.filter_class or "-")
             info_cols[3].metric(
                 "Size",
                 f"{selected_record.width_mm:,.0f} x {selected_record.height_mm:,.0f} mm"

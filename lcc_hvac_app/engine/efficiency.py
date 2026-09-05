@@ -63,6 +63,21 @@ def environment_profile(name: str | None) -> OutdoorEnvironmentProfile:
 
 def parse_iso_class_efficiencies(iso_class: Any) -> dict[str, float]:
     text = str(iso_class or "").strip()
+    en1822 = {
+        "E10": 85.0,
+        "E11": 95.0,
+        "E12": 99.5,
+        "H13": 99.95,
+        "H14": 99.995,
+        "U15": 99.9995,
+        "U16": 99.99995,
+        "U17": 99.999995,
+    }
+    upper_text = text.upper()
+    for class_name, value in en1822.items():
+        if re.search(rf"\b{class_name}\b", upper_text):
+            return {"en1822_percent": value}
+
     match = re.search(r"(\d+(?:\.\d+)?)\s*%", text)
     if match is None:
         return {}
@@ -122,6 +137,9 @@ def effective_mass_efficiency(
     if direct > 0:
         return round(direct, 4), "Direct"
     parsed_iso = parse_iso_class_efficiencies(iso_class)
+    if parsed_iso.get("en1822_percent", 0.0):
+        return normalize_percent(parsed_iso["en1822_percent"]), "Estimated from EN1822 class"
+
     estimated = estimate_mass_efficiency(
         epm1_percent or parsed_iso.get("epm1_percent", 0.0),
         epm25_percent or parsed_iso.get("epm25_percent", 0.0),

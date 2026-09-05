@@ -17,7 +17,7 @@ FORMULA_REFERENCE = [
     },
     {
         "Result": "Estimated Mass Efficiency",
-        "Formula": "PM1 fraction x ePM1 + PM1-2.5 fraction x ePM2.5 + PM2.5-10 fraction x ePM10 + Coarse fraction x ISO Coarse",
+        "Formula": "ISO 16890 fallback: PM1 fraction x ePM1 + PM1-2.5 fraction x ePM2.5 + PM2.5-10 fraction x ePM10 + Coarse fraction x ISO Coarse. EN1822 fallback: E10=85%, E11=95%, E12=99.5%, H/ULPA by EN1822 table.",
         "Unit": "%",
     },
     {

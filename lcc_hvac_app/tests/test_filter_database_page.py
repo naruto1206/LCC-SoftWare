@@ -46,7 +46,7 @@ def test_dataframe_to_excel_bytes_exports_filter_database_sheet():
                 "Filter ID": "PF-001",
                 "Supplier": "Air Filtech",
                 "Stage": "Pre-filter",
-                "ISO Class": "ISO Coarse 60%",
+                "Filter Class": "ISO Coarse 60%",
                 "DHC/filter direct (g)": 450,
             }
         ]
@@ -60,7 +60,7 @@ def test_dataframe_to_excel_bytes_exports_filter_database_sheet():
     worksheet = workbook["Filter_Database"]
     assert worksheet["A1"].value == "Filter ID"
     assert worksheet["A2"].value == "PF-001"
-    assert "ISO Class" in [cell.value for cell in worksheet[1]]
+    assert "Filter Class" in [cell.value for cell in worksheet[1]]
     assert worksheet["A1"].fill.fgColor.rgb == "000F766E"
     assert worksheet["A2"].fill.fgColor.rgb == "00DCFCE7"
     assert worksheet.freeze_panes == "A2"
@@ -97,7 +97,7 @@ def test_normalize_uploaded_database_imports_qty_per_ahu():
             {
                 "Filter ID": "PF-A",
                 "Stage": "Pre-filter",
-                "ISO Class": "ISO Coarse 70%",
+                "Filter Class": "ISO Coarse 70%",
                 "Size": "592x287x46",
                 "Qty/AHU": 20,
                 "Rated airflow/filter (m3/h)": 1000,
@@ -113,7 +113,7 @@ def test_normalize_uploaded_database_imports_qty_per_ahu():
     normalized = normalize_uploaded_database(dataframe)
 
     assert normalized.loc[0, "Filter ID"] == "PF-A"
-    assert normalized.loc[0, "ISO Class"] == "ISO Coarse 70%"
+    assert normalized.loc[0, "Filter Class"] == "ISO Coarse 70%"
     assert normalized.loc[0, "Qty/AHU"] == 20
     assert normalized.loc[0, "Rated airflow/filter (m3/h)"] == 1000
     assert normalized.loc[0, "Width (mm)"] == 592
@@ -143,13 +143,13 @@ def test_normalize_uploaded_database_estimates_mass_efficiency_from_epm():
     assert normalized.loc[0, "Mass Eff. Source"] == "Estimated from ePM/Coarse"
 
 
-def test_normalize_uploaded_database_estimates_mass_efficiency_from_iso_class():
+def test_normalize_uploaded_database_estimates_mass_efficiency_from_filter_class():
     dataframe = pd.DataFrame(
         [
             {
                 "Filter ID": "FF-B",
                 "Stage": "Fine-filter",
-                "ISO Class": "ISO ePM1 50%",
+                "Filter Class": "ISO ePM1 50%",
             }
         ]
     )
@@ -159,6 +159,39 @@ def test_normalize_uploaded_database_estimates_mass_efficiency_from_iso_class():
     assert normalized.loc[0, "ePM1 %"] == 0
     assert normalized.loc[0, "Mass Eff. %"] == 50
     assert normalized.loc[0, "Mass Eff. Source"] == "Estimated from ePM/Coarse"
+
+
+def test_normalize_uploaded_database_estimates_mass_efficiency_from_en1822_class():
+    dataframe = pd.DataFrame(
+        [
+            {
+                "Filter ID": "EPA-E11",
+                "Stage": "EPA / Final-filter",
+                "Filter Class": "E11",
+            }
+        ]
+    )
+
+    normalized = normalize_uploaded_database(dataframe)
+
+    assert normalized.loc[0, "Mass Eff. %"] == 95
+    assert normalized.loc[0, "Mass Eff. Source"] == "Estimated from EN1822 class"
+
+
+def test_normalize_uploaded_database_still_accepts_legacy_iso_class_header():
+    dataframe = pd.DataFrame(
+        [
+            {
+                "Filter ID": "LEGACY",
+                "Stage": "Fine-filter",
+                "ISO Class": "ISO ePM10 60%",
+            }
+        ]
+    )
+
+    normalized = normalize_uploaded_database(dataframe)
+
+    assert normalized.loc[0, "Filter Class"] == "ISO ePM10 60%"
 
 
 def test_normalize_uploaded_database_detects_workbook_header_row():
