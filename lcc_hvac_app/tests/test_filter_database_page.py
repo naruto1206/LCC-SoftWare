@@ -55,6 +55,8 @@ def test_dataframe_to_excel_bytes_exports_filter_database_sheet():
     workbook = load_workbook(filename=BytesIO(dataframe_to_excel_bytes(dataframe)))
 
     assert "Filter_Database" in workbook.sheetnames
+    assert "_Lists" in workbook.sheetnames
+    assert workbook["_Lists"].sheet_state == "hidden"
     worksheet = workbook["Filter_Database"]
     assert worksheet["A1"].value == "Filter ID"
     assert worksheet["A2"].value == "PF-001"
@@ -66,6 +68,10 @@ def test_dataframe_to_excel_bytes_exports_filter_database_sheet():
     assert worksheet["I2"].value == "=IF(AND(G2>0,H2>0),ROUND(G2*H2/1000000,4),0)"
     assert "ePM1 %" in [cell.value for cell in worksheet[1]]
     assert "Mass Eff. Source" in [cell.value for cell in worksheet[1]]
+    assert any(
+        validation.formula1.startswith("'_Lists'!$B$2:$B$")
+        for validation in worksheet.data_validations.dataValidation
+    )
 
 
 def test_recalculate_media_area_dataframe_uses_width_and_height():

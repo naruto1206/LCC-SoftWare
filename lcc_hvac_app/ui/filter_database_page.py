@@ -77,6 +77,14 @@ STAGE_OPTIONS = [
     "ULPA",
 ]
 
+ISO_CLASS_OPTIONS = (
+    [""]
+    + [f"ISO Coarse {value}%" for value in range(10, 101, 5)]
+    + [f"ISO ePM10 {value}%" for value in range(50, 101, 5)]
+    + [f"ISO ePM2.5 {value}%" for value in range(50, 101, 5)]
+    + [f"ISO ePM1 {value}%" for value in range(50, 101, 5)]
+)
+
 COLUMN_ALIASES = {
     "filter_id": ["filter id", "id", "code", "filter code", "product code"],
     "supplier": ["supplier", "supplier/brand", "brand", "manufacturer", "maker"],
@@ -476,9 +484,11 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             index=_option_index(STAGE_OPTIONS, _row_value(selected_row, "Stage")),
             key=f"stage_{form_key}",
         )
-        iso_class = col5.text_input(
+        iso_class_options = _choice_options(ISO_CLASS_OPTIONS, current_df, "ISO Class")
+        iso_class = col5.selectbox(
             "ISO Class",
-            value=str(_row_value(selected_row, "ISO Class")),
+            iso_class_options,
+            index=_option_index(iso_class_options, _row_value(selected_row, "ISO Class")),
             key=f"iso_class_{form_key}",
             help="Reference only. This field helps identify the selected filter and is not used directly in LCC calculation.",
         )
@@ -805,6 +815,12 @@ def dataframe_to_excel_bytes(dataframe: pd.DataFrame) -> bytes:
             index=False,
             sheet_name="Filter_Database",
         )
+        list_sheet = writer.book.create_sheet("_Lists")
+        for row_index, value in enumerate([option for option in STAGE_OPTIONS if option], start=2):
+            list_sheet.cell(row=row_index, column=1, value=value)
+        for row_index, value in enumerate([option for option in ISO_CLASS_OPTIONS if option], start=2):
+            list_sheet.cell(row=row_index, column=2, value=value)
+        list_sheet.sheet_state = "hidden"
         worksheet = writer.book["Filter_Database"]
         format_filter_database_worksheet(worksheet)
     return output.getvalue()
@@ -928,10 +944,10 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
     stage_column = headers.index("Stage") + 1 if "Stage" in headers else None
     if stage_column is not None:
         stage_letter = get_column_letter(stage_column)
-        stage_values = ",".join(option for option in STAGE_OPTIONS if option)
+        stage_count = len([option for option in STAGE_OPTIONS if option])
         validation = DataValidation(
             type="list",
-            formula1=f'"{stage_values}"',
+            formula1=f"'_Lists'!$A$2:$A${stage_count + 1}",
             allow_blank=False,
             showErrorMessage=True,
         )
@@ -941,6 +957,23 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
         validation.promptTitle = "Filter stage"
         worksheet.add_data_validation(validation)
         validation.add(f"{stage_letter}2:{stage_letter}{max_row}")
+
+    iso_class_column = headers.index("ISO Class") + 1 if "ISO Class" in headers else None
+    if iso_class_column is not None:
+        iso_class_letter = get_column_letter(iso_class_column)
+        iso_count = len([option for option in ISO_CLASS_OPTIONS if option])
+        validation = DataValidation(
+            type="list",
+            formula1=f"'_Lists'!$B$2:$B${iso_count + 1}",
+            allow_blank=False,
+            showErrorMessage=True,
+        )
+        validation.error = "Please choose one of the approved ISO classes."
+        validation.errorTitle = "Invalid ISO class"
+        validation.prompt = "Select ISO Coarse, ISO ePM10, ISO ePM2.5, or ISO ePM1 class."
+        validation.promptTitle = "ISO class"
+        worksheet.add_data_validation(validation)
+        validation.add(f"{iso_class_letter}2:{iso_class_letter}{max_row}")
 
     if all(header in headers for header in ["Width (mm)", "Height (mm)", "Media area/filter (m2)"]):
         width_letter = get_column_letter(headers.index("Width (mm)") + 1)
