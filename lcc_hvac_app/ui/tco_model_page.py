@@ -148,7 +148,7 @@ def render_tco_model(comparison: dict[str, object], currency: str) -> None:
         return
 
     filtered_df = model_df[model_df["Scenario"].isin(selected_scenarios)]
-    st.dataframe(filtered_df, use_container_width=True, hide_index=True)
+    st.dataframe(filtered_df, width="stretch", hide_index=True)
 
     st.download_button(
         "Download TCO model CSV",
@@ -157,7 +157,7 @@ def render_tco_model(comparison: dict[str, object], currency: str) -> None:
         .encode("utf-8-sig"),
         file_name="tco_model_stage_breakdown.csv",
         mime="text/csv",
-        use_container_width=True,
+        width="stretch",
     )
 
     st.markdown("**Scenario Cost Breakdown**")
@@ -168,4 +168,4 @@ def render_tco_model(comparison: dict[str, object], currency: str) -> None:
             scenario_stages = filtered_df[
                 filtered_df["Scenario"] == str(summary["scenario"])
             ]
-            st.dataframe(scenario_stages, use_container_width=True, hide_index=True)
+            st.dataframe(scenario_stages, width="stretch", hide_index=True)

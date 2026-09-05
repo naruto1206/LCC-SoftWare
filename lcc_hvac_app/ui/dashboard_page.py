@@ -131,8 +131,8 @@ def render_dashboard(
 
     st.markdown('<div class="section-title">Cost Analysis</div>', unsafe_allow_html=True)
     chart_left, chart_right = st.columns(2)
-    chart_left.plotly_chart(fig_tco, use_container_width=True)
-    chart_right.plotly_chart(fig_breakdown, use_container_width=True)
+    chart_left.plotly_chart(fig_tco, width="stretch")
+    chart_right.plotly_chart(fig_breakdown, width="stretch")
 
     fig_stage = px.bar(
         stages,
@@ -164,8 +164,8 @@ def render_dashboard(
     apply_bar_value_style(fig_life)
     st.markdown('<div class="section-title">Stage Performance</div>', unsafe_allow_html=True)
     chart_left, chart_right = st.columns(2)
-    chart_left.plotly_chart(fig_stage, use_container_width=True)
-    chart_right.plotly_chart(fig_life, use_container_width=True)
+    chart_left.plotly_chart(fig_stage, width="stretch")
+    chart_right.plotly_chart(fig_life, width="stretch")
 
     fig_energy = px.bar(
         summaries,
@@ -189,5 +189,5 @@ def render_dashboard(
     apply_bar_value_style(fig_co2)
     st.markdown('<div class="section-title">Energy and Emissions</div>', unsafe_allow_html=True)
     chart_left, chart_right = st.columns(2)
-    chart_left.plotly_chart(fig_energy, use_container_width=True)
-    chart_right.plotly_chart(fig_co2, use_container_width=True)
+    chart_left.plotly_chart(fig_energy, width="stretch")
+    chart_right.plotly_chart(fig_co2, width="stretch")

@@ -101,6 +101,6 @@ def render_formula_reference(expanded: bool = False) -> None:
     with st.expander("Formula Reference", expanded=expanded):
         st.dataframe(
             pd.DataFrame(FORMULA_REFERENCE),
-            use_container_width=True,
+            width="stretch",
             hide_index=True,
         )

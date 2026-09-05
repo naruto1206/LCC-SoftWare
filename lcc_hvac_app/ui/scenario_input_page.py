@@ -194,7 +194,7 @@ def render_eurovent_dp_calculator(
             curve_df,
             num_rows="dynamic",
             hide_index=True,
-            use_container_width=True,
+            width="stretch",
             key=f"{safe_prefix}_{index}_eurovent_curve",
             column_config={
                 "Dust fed mi (g)": st.column_config.NumberColumn(
@@ -224,7 +224,7 @@ def render_eurovent_dp_calculator(
             if st.button(
                 "Apply Eurovent Avg DP to this stage",
                 key=f"{safe_prefix}_{index}_apply_eurovent_dp",
-                use_container_width=True,
+                width="stretch",
             ):
                 st.session_state[avg_dp_key] = float(result.average_dp_pa)
                 st.success(f"Applied {result.average_dp_pa:,.2f} Pa to Average Pressure Drop.")
@@ -243,7 +243,7 @@ def render_eurovent_dp_calculator(
                     "used_to_mx": "Use to Mx?",
                 }
             )
-            st.dataframe(detail, use_container_width=True, hide_index=True)
+            st.dataframe(detail, width="stretch", hide_index=True)
         except ValueError as exc:
             st.info(f"Eurovent DP cannot be calculated yet: {exc}")
 
@@ -260,7 +260,7 @@ def render_scenario_editor(
 
     stages = list(scenario.stages)
     add_key = f"add_{key_prefix or scenario.name}"
-    if st.button("Add Stage", key=add_key, use_container_width=True):
+    if st.button("Add Stage", key=add_key, width="stretch"):
         stages.append(_blank_stage())
 
     edited_stages: list[FilterStage] = []
@@ -275,7 +275,7 @@ def render_scenario_editor(
             remove = remove_col.button(
                 "Remove",
                 key=_field_key(scenario.name, index, "remove", key_prefix),
-                use_container_width=True,
+                width="stretch",
             )
             if remove:
                 continue
@@ -323,7 +323,7 @@ def render_scenario_editor(
                 if st.button(
                     "Reload parameters from selected filter",
                     key=_field_key(scenario.name, index, "apply_filter", key_prefix),
-                    use_container_width=True,
+                    width="stretch",
                 ):
                     _apply_filter_record_to_session(
                         selected_record,
@@ -413,6 +413,7 @@ def render_scenario_editor(
                     value=media_area_m2,
                     step=0.01,
                     disabled=True,
+                    key=_field_key(scenario.name, index, "media_area_m2", key_prefix),
                     help="Calculated from Width x Height / 1,000,000 for app consistency.",
                 )
 

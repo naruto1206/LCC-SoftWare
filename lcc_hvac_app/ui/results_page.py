@@ -53,7 +53,7 @@ def render_results(comparison: dict[str, object], currency: str) -> None:
     render_formula_reference()
 
     st.markdown("**Scenario Comparison**")
-    st.dataframe(summaries[SUMMARY_COLUMNS], use_container_width=True, hide_index=True)
+    st.dataframe(summaries[SUMMARY_COLUMNS], width="stretch", hide_index=True)
 
     best = comparison.get("best_option")
     best_row = summaries[summaries["scenario"] == best].iloc[0]
@@ -63,4 +63,4 @@ def render_results(comparison: dict[str, object], currency: str) -> None:
     )
 
     st.markdown("**Stage-Level Calculation Detail**")
-    st.dataframe(stages[STAGE_COLUMNS], use_container_width=True, hide_index=True)
+    st.dataframe(stages[STAGE_COLUMNS], width="stretch", hide_index=True)

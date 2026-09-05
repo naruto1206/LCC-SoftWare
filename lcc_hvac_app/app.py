@@ -485,7 +485,7 @@ def current_comparison(project: Project) -> dict[str, object]:
 
 def render_sidebar(project: Project) -> str:
     if LOGO_PATH.exists():
-        st.sidebar.image(str(LOGO_PATH), use_container_width=True)
+        st.sidebar.image(str(LOGO_PATH), width="stretch")
     st.sidebar.markdown(
         '<div class="sidebar-title">LCC HVAC Filter</div>',
         unsafe_allow_html=True,
@@ -516,14 +516,14 @@ def render_sidebar(project: Project) -> str:
         key="active_page",
     )
     st.sidebar.divider()
-    if st.sidebar.button("New Project", use_container_width=True):
+    if st.sidebar.button("New Project", width="stretch"):
         set_project(create_new_project())
         reset_project_info_editor()
         reset_filter_database_editor()
         st.session_state.requested_page = "setup"
         st.session_state.flash_message = "New project created. Please enter project information."
         st.rerun()
-    if st.sidebar.button("Calculate", type="primary", use_container_width=True):
+    if st.sidebar.button("Calculate", type="primary", width="stretch"):
         warnings = validate_project(project.assumptions, project.scenarios)
         if warnings:
             st.session_state.validation_warnings = warnings
@@ -626,7 +626,7 @@ def render_scenario_page(project: Project, index: int) -> None:
     if index > 0 and action_col.button(
         "Remove Option",
         key=f"remove_option_{index}",
-        use_container_width=True,
+        width="stretch",
     ):
         removed_name = project.scenarios[index].name
         project.scenarios.pop(index)
@@ -639,7 +639,7 @@ def render_scenario_page(project: Project, index: int) -> None:
         if tools[0].button(
             "Copy from Base",
             key=f"copy_base_{index}",
-            use_container_width=True,
+            width="stretch",
         ):
             project.scenarios[index] = copy_scenario(project.scenarios[0], scenario.name)
             set_project(project)
@@ -648,7 +648,7 @@ def render_scenario_page(project: Project, index: int) -> None:
         if index > 1 and tools[1].button(
             f"Copy from {previous_label}",
             key=f"copy_option_1_{index}",
-            use_container_width=True,
+            width="stretch",
         ):
             project.scenarios[index] = copy_scenario(project.scenarios[index - 1], scenario.name)
             set_project(project)
@@ -656,7 +656,7 @@ def render_scenario_page(project: Project, index: int) -> None:
         if tools[2].button(
             "Clear option",
             key=f"clear_option_{index}",
-            use_container_width=True,
+            width="stretch",
         ):
             project.scenarios[index].stages = []
             set_project(project)
@@ -682,7 +682,7 @@ def render_scenarios_section(project: Project) -> None:
     if not project.scenarios:
         project.scenarios.append(Scenario("Base / Current", []))
     tools = st.columns([1, 3])
-    if tools[0].button("Add Option", type="primary", use_container_width=True):
+    if tools[0].button("Add Option", type="primary", width="stretch"):
         add_option(project)
     tools[1].caption(
         "Add or remove options here. Every option is automatically included in Dashboard, TCO Model, Results, and Export."
@@ -729,7 +729,7 @@ def render_export(project: Project, comparison: dict[str, object]) -> None:
         data=json.dumps(payload, indent=2, ensure_ascii=False).encode("utf-8"),
         file_name="LCC_Project.json",
         mime="application/json",
-        use_container_width=True,
+        width="stretch",
     )
 
     uploaded = st.file_uploader("Load Project JSON", type=["json"])
@@ -751,12 +751,12 @@ def render_export(project: Project, comparison: dict[str, object]) -> None:
             data=excel_bytes,
             file_name="LCC_Report.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True,
+            width="stretch",
         )
     except Exception as exc:
         st.error(f"Cannot build Excel report: {exc}")
 
-    if st.button("Reset Input", use_container_width=True):
+    if st.button("Reset Input", width="stretch"):
         set_project(create_new_project())
         reset_project_info_editor()
         reset_filter_database_editor()

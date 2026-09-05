@@ -125,7 +125,7 @@ def render_project_info(info: ProjectInfo) -> ProjectInfo:
     if st.button(
         "Create Project and Sync Information",
         type="primary",
-        use_container_width=True,
+        width="stretch",
         disabled=bool(missing_fields),
     ):
         _commit_project_info(project_info_from_session(entered_info))

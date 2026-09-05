@@ -417,6 +417,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             value=media_area,
             step=0.01,
             disabled=True,
+            key=f"media_area_{form_key}",
             help="Automatically calculated from Width x Height / 1,000,000.",
         )
 
@@ -504,7 +505,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
 
         submitted = st.button(
             "Save filter record",
-            use_container_width=True,
+            width="stretch",
             disabled=bool(missing_fields),
         )
         if submitted:
@@ -512,7 +513,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             st.rerun()
 
     if selected_existing != "Create new filter":
-        if st.button("Delete selected filter record", use_container_width=True):
+        if st.button("Delete selected filter record", width="stretch"):
             remaining = current_df[
                 current_df["Filter ID"].astype(str).str.strip() != selected_existing
             ].reset_index(drop=True)
@@ -807,7 +808,7 @@ def render_filter_record_delete_tools(saved_df: pd.DataFrame) -> pd.DataFrame:
         delete_col, count_col = st.columns([1, 2])
         delete_clicked = delete_col.button(
             "Delete selected rows",
-            use_container_width=True,
+            width="stretch",
             disabled=not selected_ids,
         )
         count_col.caption(f"{len(selected_ids)} row(s) selected.")
@@ -836,7 +837,7 @@ def render_filter_record_edit_tools(saved_df: pd.DataFrame) -> None:
             key="filter_record_row_to_modify",
         )
         action_col, note_col = st.columns([1, 2])
-        if action_col.button("Edit selected row", use_container_width=True):
+        if action_col.button("Edit selected row", width="stretch"):
             st.session_state.filter_record_to_edit_requested = selected_id
             st.success(f"{selected_id} loaded into the edit form above.")
             st.rerun()
@@ -874,7 +875,7 @@ def render_filter_database(records: list[FilterDatabaseRecord]) -> list[FilterDa
                 index=default_sheet,
                 key="filter_database_sheet",
             )
-            if st.button("Import selected sheet", use_container_width=True):
+            if st.button("Import selected sheet", width="stretch"):
                 imported = read_excel_database(BytesIO(excel_bytes), selected_sheet)
                 st.session_state.filter_database_data = imported
                 persist_filter_database_dataframe(imported)
@@ -897,12 +898,12 @@ def render_filter_database(records: list[FilterDatabaseRecord]) -> list[FilterDa
     saved_df = normalize_display_dataframe(st.session_state.get("filter_database_data"))
     st.markdown("**Filter Records**")
     st.caption("Use the form above to add or edit filters. This table is for review and selection in Scenarios.")
-    st.dataframe(saved_df, use_container_width=True, hide_index=True)
+    st.dataframe(saved_df, width="stretch", hide_index=True)
     render_filter_record_edit_tools(saved_df)
     saved_df = render_filter_record_delete_tools(saved_df)
 
     col1, col2 = st.columns([1, 2])
-    if col1.button("Clear database", use_container_width=True):
+    if col1.button("Clear database", width="stretch"):
         empty_df = pd.DataFrame(columns=list(DISPLAY_COLUMNS.values()))
         st.session_state.filter_database_data = empty_df
         persist_filter_database_dataframe(empty_df)
@@ -915,7 +916,7 @@ def render_filter_database(records: list[FilterDatabaseRecord]) -> list[FilterDa
         data=dataframe_to_excel_bytes(saved_df),
         file_name="filter_database.xlsx",
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-        use_container_width=True,
+        width="stretch",
     )
 
     return dataframe_to_records(saved_df)
