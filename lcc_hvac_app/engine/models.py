@@ -39,6 +39,9 @@ class FilterStage:
     mass_efficiency: float = 0.5
     avg_dp_pa: float = 80.0
     price_vnd_filter: float = 100000.0
+    width_mm: float = 0.0
+    height_mm: float = 0.0
+    media_area_m2: float = 0.0
     filter_id: str = ""
     eurovent_iso_group: str = "ISO ePM1"
     eurovent_mx_g: float = 200.0

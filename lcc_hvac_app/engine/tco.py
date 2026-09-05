@@ -8,6 +8,34 @@ from .filter_life import calculate_filter_life_days, calculate_replacement_per_y
 from .models import Assumptions, FilterStage, Scenario
 
 
+def calculate_face_area_m2(width_mm: float, height_mm: float) -> float:
+    if width_mm <= 0 or height_mm <= 0:
+        return 0.0
+    return width_mm * height_mm / 1_000_000.0
+
+
+def calculate_media_velocity_m_s(
+    airflow_m3_h: float,
+    media_area_m2: float,
+    qty_per_ahu: float,
+) -> float:
+    total_media_area = media_area_m2 * qty_per_ahu
+    if total_media_area <= 0:
+        return 0.0
+    return airflow_m3_h / 3600.0 / total_media_area
+
+
+def calculate_face_velocity_m_s(
+    airflow_m3_h: float,
+    face_area_m2: float,
+    qty_per_ahu: float,
+) -> float:
+    total_face_area = face_area_m2 * qty_per_ahu
+    if total_face_area <= 0:
+        return 0.0
+    return airflow_m3_h / 3600.0 / total_face_area
+
+
 def calculate_stage_tco(
     stage: FilterStage,
     assumptions: Assumptions,
@@ -46,9 +74,30 @@ def calculate_stage_tco(
     )
     co2 = calculate_co2_year(energy_kwh, assumptions.co2_emission_factor_kg_kwh)
     tco_year = filter_cost + energy_cost + labor_disposal_cost
+    face_area = calculate_face_area_m2(stage.width_mm, stage.height_mm)
+    media_area = stage.media_area_m2
     return {
         "stage": stage.stage,
         "qty_per_ahu": stage.qty_per_ahu,
+        "width_mm": stage.width_mm,
+        "height_mm": stage.height_mm,
+        "face_area_m2": face_area,
+        "total_face_area_m2": face_area * stage.qty_per_ahu,
+        "media_area_m2": media_area,
+        "total_media_area_m2": media_area * stage.qty_per_ahu,
+        "airflow_per_filter_m3_h": assumptions.airflow_m3_h_per_ahu / stage.qty_per_ahu
+        if stage.qty_per_ahu > 0
+        else 0.0,
+        "face_velocity_m_s": calculate_face_velocity_m_s(
+            assumptions.airflow_m3_h_per_ahu,
+            face_area,
+            stage.qty_per_ahu,
+        ),
+        "media_velocity_m_s": calculate_media_velocity_m_s(
+            assumptions.airflow_m3_h_per_ahu,
+            media_area,
+            stage.qty_per_ahu,
+        ),
         "dhc_g": stage.dhc_g,
         "mass_efficiency": stage.normalized_efficiency(),
         "avg_dp_pa": stage.avg_dp_pa,

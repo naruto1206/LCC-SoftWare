@@ -25,6 +25,13 @@ SUMMARY_COLUMNS = [
 STAGE_COLUMNS = [
     "scenario",
     "stage",
+    "qty_per_ahu",
+    "width_mm",
+    "height_mm",
+    "face_area_m2",
+    "media_area_m2",
+    "face_velocity_m_s",
+    "media_velocity_m_s",
     "dust_entering_day_filter",
     "dust_captured_day_filter",
     "life_days",

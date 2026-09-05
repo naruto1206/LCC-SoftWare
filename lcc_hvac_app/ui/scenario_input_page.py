@@ -91,6 +91,12 @@ def _to_float(value: Any) -> float | None:
         return None
 
 
+def _calculate_media_area_m2(width_mm: float, height_mm: float) -> float:
+    if width_mm <= 0 or height_mm <= 0:
+        return 0.0
+    return round(width_mm * height_mm / 1_000_000, 4)
+
+
 def _filter_label(record: FilterDatabaseRecord) -> str:
     dimensions = ""
     if record.width_mm and record.height_mm:
@@ -123,6 +129,9 @@ def _apply_filter_record_to_session(
     field_values = {
         "stage": record.stage,
         "qty_per_ahu": record.qty_per_ahu,
+        "width_mm": record.width_mm,
+        "height_mm": record.height_mm,
+        "media_area_m2": record.media_area_m2,
         "dhc_g": record.dhc_g,
         "mass_efficiency": record.mass_efficiency,
         "avg_dp_pa": record.avg_dp_pa,
@@ -381,6 +390,32 @@ def render_scenario_editor(
                 key=_field_key(scenario.name, index, "price_vnd_filter", key_prefix),
             )
 
+            with st.expander("Geometry check", expanded=False):
+                geo_col1, geo_col2, geo_col3 = st.columns(3)
+                width_mm = geo_col1.number_input(
+                    "Width (mm)",
+                    min_value=0.0,
+                    value=float(getattr(stage, "width_mm", 0.0)),
+                    step=1.0,
+                    key=_field_key(scenario.name, index, "width_mm", key_prefix),
+                )
+                height_mm = geo_col2.number_input(
+                    "Height (mm)",
+                    min_value=0.0,
+                    value=float(getattr(stage, "height_mm", 0.0)),
+                    step=1.0,
+                    key=_field_key(scenario.name, index, "height_mm", key_prefix),
+                )
+                media_area_m2 = _calculate_media_area_m2(width_mm, height_mm)
+                geo_col3.number_input(
+                    "Media area/filter (m2)",
+                    min_value=0.0,
+                    value=media_area_m2,
+                    step=0.01,
+                    disabled=True,
+                    help="Calculated from Width x Height / 1,000,000 for app consistency.",
+                )
+
             if stage_name.strip():
                 edited_stages.append(
                     FilterStage(
@@ -390,6 +425,9 @@ def render_scenario_editor(
                         mass_efficiency=mass_efficiency,
                         avg_dp_pa=avg_dp_pa,
                         price_vnd_filter=price_vnd_filter,
+                        width_mm=width_mm,
+                        height_mm=height_mm,
+                        media_area_m2=media_area_m2,
                         filter_id="" if selected_filter_id == "Manual input" else selected_filter_id,
                         eurovent_iso_group=eurovent_iso_group,
                         eurovent_mx_g=eurovent_mx_g,
@@ -411,6 +449,9 @@ def copy_scenario(source: Scenario, target_name: str) -> Scenario:
                 mass_efficiency=stage.mass_efficiency,
                 avg_dp_pa=stage.avg_dp_pa,
                 price_vnd_filter=stage.price_vnd_filter,
+                width_mm=getattr(stage, "width_mm", 0.0),
+                height_mm=getattr(stage, "height_mm", 0.0),
+                media_area_m2=getattr(stage, "media_area_m2", 0.0),
                 filter_id=getattr(stage, "filter_id", ""),
                 eurovent_iso_group=getattr(stage, "eurovent_iso_group", "ISO ePM1"),
                 eurovent_mx_g=getattr(stage, "eurovent_mx_g", 200.0),

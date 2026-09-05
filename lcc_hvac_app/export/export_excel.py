@@ -25,6 +25,21 @@ FORMULA_REFERENCE = [
         "Unit": "g/day/filter",
     },
     {
+        "Formula name": "Face area",
+        "Formula": "Width x Height / 1,000,000",
+        "Unit": "m2/filter",
+    },
+    {
+        "Formula name": "Face velocity",
+        "Formula": "Airflow(m3/s) / (Face area x Qty/AHU)",
+        "Unit": "m/s",
+    },
+    {
+        "Formula name": "Media velocity",
+        "Formula": "Airflow(m3/s) / (Media area x Qty/AHU)",
+        "Unit": "m/s",
+    },
+    {
         "Formula name": "Filter life",
         "Formula": "DHC / Dust captured per day",
         "Unit": "days",

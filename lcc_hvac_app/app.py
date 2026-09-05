@@ -413,6 +413,12 @@ def ensure_project_schema(project: Project) -> None:
         for stage in scenario.stages:
             if not hasattr(stage, "filter_id"):
                 stage.filter_id = ""
+            if not hasattr(stage, "width_mm"):
+                stage.width_mm = 0.0
+            if not hasattr(stage, "height_mm"):
+                stage.height_mm = 0.0
+            if not hasattr(stage, "media_area_m2"):
+                stage.media_area_m2 = 0.0
             if not hasattr(stage, "eurovent_iso_group"):
                 stage.eurovent_iso_group = "ISO ePM1"
             if not hasattr(stage, "eurovent_mx_g"):

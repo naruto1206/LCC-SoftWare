@@ -70,3 +70,39 @@ def test_tco_engine_matches_excel_tco_model_option_1_sample():
     assert result["summary"]["energy_cost_year"] == 122_415_384.61538461
     assert result["summary"]["labor_disposal_cost_year"] == 6_155_902.285714285
     assert result["summary"]["tco_year"] == 175_808_335.47252747
+
+
+def test_stage_tco_includes_geometry_checks():
+    assumptions = Assumptions(
+        airflow_m3_h_per_ahu=20000,
+        number_of_ahu=1,
+        operating_hours_day=24,
+        operating_days_year=365,
+        fan_efficiency=0.6,
+        electricity_price_vnd_kwh=2500,
+        dust_concentration_mg_m3=0.3,
+    )
+    scenario = Scenario(
+        "Geometry check",
+        [
+            FilterStage(
+                "Pre-filter",
+                qty_per_ahu=20,
+                dhc_g=600,
+                mass_efficiency=0.7,
+                avg_dp_pa=85,
+                price_vnd_filter=250000,
+                width_mm=592,
+                height_mm=592,
+                media_area_m2=0.3505,
+            )
+        ],
+    )
+
+    stage = calculate_scenario_tco(scenario, assumptions)["stages"][0]
+
+    assert round(stage["face_area_m2"], 4) == 0.3505
+    assert round(stage["total_face_area_m2"], 3) == 7.009
+    assert stage["airflow_per_filter_m3_h"] == 1000
+    assert round(stage["face_velocity_m_s"], 2) == 0.79
+    assert round(stage["media_velocity_m_s"], 2) == 0.79
