@@ -141,6 +141,24 @@ def test_normalize_uploaded_database_estimates_mass_efficiency_from_epm():
     assert normalized.loc[0, "Mass Eff. Source"] == "Estimated from ePM/Coarse"
 
 
+def test_normalize_uploaded_database_estimates_mass_efficiency_from_iso_class():
+    dataframe = pd.DataFrame(
+        [
+            {
+                "Filter ID": "FF-B",
+                "Stage": "Fine-filter",
+                "ISO Class": "ISO ePM1 50%",
+            }
+        ]
+    )
+
+    normalized = normalize_uploaded_database(dataframe)
+
+    assert normalized.loc[0, "ePM1 %"] == 0
+    assert normalized.loc[0, "Mass Eff. %"] == 50
+    assert normalized.loc[0, "Mass Eff. Source"] == "Estimated from ePM/Coarse"
+
+
 def test_normalize_uploaded_database_detects_workbook_header_row():
     dataframe = pd.DataFrame(
         [

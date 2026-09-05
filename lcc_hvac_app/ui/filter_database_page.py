@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from io import BytesIO
 from typing import Any
 
@@ -214,6 +215,24 @@ def calculate_media_area_m2(width_mm: Any, height_mm: Any) -> float:
     return round(width * height / 1_000_000, 4)
 
 
+def parse_iso_class_efficiencies(iso_class: Any) -> dict[str, float]:
+    text = str(iso_class or "").strip()
+    match = re.search(r"(\d+(?:\.\d+)?)\s*%", text)
+    if match is None:
+        return {}
+    value = _to_float(match.group(1))
+    lower_text = text.lower().replace(",", ".")
+    if "epm2.5" in lower_text or "epm25" in lower_text:
+        return {"ePM2.5 %": value}
+    if "epm10" in lower_text:
+        return {"ePM10 %": value}
+    if "epm1" in lower_text:
+        return {"ePM1 %": value}
+    if "coarse" in lower_text:
+        return {"ISO Coarse %": value}
+    return {}
+
+
 def current_outdoor_environment() -> str:
     project = st.session_state.get("project")
     assumptions = getattr(project, "assumptions", None)
@@ -223,10 +242,11 @@ def current_outdoor_environment() -> str:
 def calculate_effective_mass_efficiency_for_row(row: pd.Series | dict[str, Any]) -> tuple[float, str]:
     source = str(row.get("Mass Eff. Source", "") or "")
     direct = 0.0 if source.startswith("Estimated") else row.get("Mass Eff. %", 0.0)
-    epm1 = row.get("ePM1 %", 0.0)
-    epm25 = row.get("ePM2.5 %", 0.0)
-    epm10 = row.get("ePM10 %", 0.0)
-    coarse = row.get("ISO Coarse %", 0.0)
+    parsed_iso = parse_iso_class_efficiencies(row.get("ISO Class", ""))
+    epm1 = row.get("ePM1 %", 0.0) or parsed_iso.get("ePM1 %", 0.0)
+    epm25 = row.get("ePM2.5 %", 0.0) or parsed_iso.get("ePM2.5 %", 0.0)
+    epm10 = row.get("ePM10 %", 0.0) or parsed_iso.get("ePM10 %", 0.0)
+    coarse = row.get("ISO Coarse %", 0.0) or parsed_iso.get("ISO Coarse %", 0.0)
     return effective_mass_efficiency(
         direct,
         epm1,
@@ -492,6 +512,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             key=f"iso_class_{form_key}",
             help="Reference only. This field helps identify the selected filter and is not used directly in LCC calculation.",
         )
+        parsed_iso = parse_iso_class_efficiencies(iso_class)
 
         col7, col8, col9 = st.columns(3)
         width_mm = col7.number_input(
@@ -571,7 +592,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             "ePM1 %",
             min_value=0.0,
             max_value=100.0,
-            value=float(_row_value(selected_row, "ePM1 %", 0.0)),
+            value=float(_row_value(selected_row, "ePM1 %", 0.0) or parsed_iso.get("ePM1 %", 0.0)),
             step=1.0,
             key=f"epm1_{form_key}",
         )
@@ -579,7 +600,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             "ePM2.5 %",
             min_value=0.0,
             max_value=100.0,
-            value=float(_row_value(selected_row, "ePM2.5 %", 0.0)),
+            value=float(_row_value(selected_row, "ePM2.5 %", 0.0) or parsed_iso.get("ePM2.5 %", 0.0)),
             step=1.0,
             key=f"epm25_{form_key}",
         )
@@ -587,7 +608,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             "ePM10 %",
             min_value=0.0,
             max_value=100.0,
-            value=float(_row_value(selected_row, "ePM10 %", 0.0)),
+            value=float(_row_value(selected_row, "ePM10 %", 0.0) or parsed_iso.get("ePM10 %", 0.0)),
             step=1.0,
             key=f"epm10_{form_key}",
         )
@@ -595,7 +616,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             "ISO Coarse %",
             min_value=0.0,
             max_value=100.0,
-            value=float(_row_value(selected_row, "ISO Coarse %", 0.0)),
+            value=float(_row_value(selected_row, "ISO Coarse %", 0.0) or parsed_iso.get("ISO Coarse %", 0.0)),
             step=1.0,
             key=f"coarse_{form_key}",
         )

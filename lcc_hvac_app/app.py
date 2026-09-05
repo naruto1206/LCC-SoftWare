@@ -457,6 +457,7 @@ def stage_from_filter_record(
         getattr(record, "epm10_percent", 0.0),
         getattr(record, "coarse_percent", 0.0),
         outdoor_environment,
+        record.filter_class,
     )
     return FilterStage(
         stage=record.stage,

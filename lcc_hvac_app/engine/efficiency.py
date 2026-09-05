@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -60,6 +61,24 @@ def environment_profile(name: str | None) -> OutdoorEnvironmentProfile:
     return OUTDOOR_ENVIRONMENT_PROFILES[DEFAULT_OUTDOOR_ENVIRONMENT]
 
 
+def parse_iso_class_efficiencies(iso_class: Any) -> dict[str, float]:
+    text = str(iso_class or "").strip()
+    match = re.search(r"(\d+(?:\.\d+)?)\s*%", text)
+    if match is None:
+        return {}
+    value = percent_for_display(match.group(1))
+    lower_text = text.lower().replace(",", ".")
+    if "epm2.5" in lower_text or "epm25" in lower_text:
+        return {"epm25_percent": value}
+    if "epm10" in lower_text:
+        return {"epm10_percent": value}
+    if "epm1" in lower_text:
+        return {"epm1_percent": value}
+    if "coarse" in lower_text:
+        return {"coarse_percent": value}
+    return {}
+
+
 def estimate_mass_efficiency(
     epm1_percent: Any = 0.0,
     epm25_percent: Any = 0.0,
@@ -97,15 +116,17 @@ def effective_mass_efficiency(
     epm10_percent: Any = 0.0,
     coarse_percent: Any = 0.0,
     outdoor_environment: str | None = None,
+    iso_class: Any = "",
 ) -> tuple[float, str]:
     direct = normalize_percent(direct_mass_efficiency)
     if direct > 0:
         return round(direct, 4), "Direct"
+    parsed_iso = parse_iso_class_efficiencies(iso_class)
     estimated = estimate_mass_efficiency(
-        epm1_percent,
-        epm25_percent,
-        epm10_percent,
-        coarse_percent,
+        epm1_percent or parsed_iso.get("epm1_percent", 0.0),
+        epm25_percent or parsed_iso.get("epm25_percent", 0.0),
+        epm10_percent or parsed_iso.get("epm10_percent", 0.0),
+        coarse_percent or parsed_iso.get("coarse_percent", 0.0),
         outdoor_environment,
     )
     if estimated > 0:

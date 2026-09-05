@@ -171,6 +171,7 @@ def _record_to_stage(
         getattr(record, "epm10_percent", 0.0),
         getattr(record, "coarse_percent", 0.0),
         outdoor_environment,
+        record.filter_class,
     )
     return FilterStage(
         stage=record.stage,
@@ -367,6 +368,7 @@ def render_scenario_editor(
                 getattr(selected_record, "epm10_percent", 0.0),
                 getattr(selected_record, "coarse_percent", 0.0),
                 outdoor_environment,
+                selected_record.filter_class,
             )
             value_cols[0].metric("Qty/AHU", f"{selected_record.qty_per_ahu:,.0f}")
             value_cols[1].metric("DHC", f"{selected_record.dhc_g:,.0f} g")
