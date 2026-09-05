@@ -11,7 +11,13 @@ if str(PACKAGE_PARENT) not in sys.path:
 
 import streamlit as st
 
-from lcc_hvac_app.engine.models import Project, Scenario, default_project
+from lcc_hvac_app.engine.models import (
+    FilterDatabaseRecord,
+    FilterStage,
+    Project,
+    Scenario,
+    default_project,
+)
 from lcc_hvac_app.engine.scenario import compare_scenarios
 from lcc_hvac_app.engine.validation import validate_project
 from lcc_hvac_app.export.export_excel import build_excel_report
@@ -427,11 +433,65 @@ def ensure_project_schema(project: Project) -> None:
                 stage.eurovent_curve = []
 
 
+def stage_from_filter_record(record: FilterDatabaseRecord) -> FilterStage:
+    return FilterStage(
+        stage=record.stage,
+        qty_per_ahu=record.qty_per_ahu,
+        dhc_g=record.dhc_g,
+        mass_efficiency=record.mass_efficiency,
+        avg_dp_pa=record.avg_dp_pa,
+        price_vnd_filter=record.price_vnd_filter,
+        width_mm=record.width_mm,
+        height_mm=record.height_mm,
+        media_area_m2=record.media_area_m2,
+        filter_id=record.filter_id,
+    )
+
+
+def default_scenarios_from_filter_database(
+    filter_database: list[FilterDatabaseRecord],
+) -> list[Scenario]:
+    stage_order = ["Pre-filter", "Fine-filter", "EPA / Final-filter", "HEPA", "ULPA"]
+    records_by_stage: dict[str, list[FilterDatabaseRecord]] = {}
+    for record in filter_database:
+        if record.filter_id.strip() and record.stage.strip():
+            records_by_stage.setdefault(record.stage, []).append(record)
+
+    base_records = [
+        records_by_stage[stage][0]
+        for stage in stage_order
+        if stage in records_by_stage and records_by_stage[stage]
+    ]
+    if not base_records:
+        return []
+
+    scenarios = [
+        Scenario("Base / Current", [stage_from_filter_record(record) for record in base_records])
+    ]
+
+    option_records = []
+    has_alternative = False
+    for record in base_records:
+        stage_records = records_by_stage.get(record.stage, [record])
+        selected = stage_records[-1]
+        if selected.filter_id != record.filter_id:
+            has_alternative = True
+        option_records.append(selected)
+    if has_alternative:
+        scenarios.append(
+            Scenario("Option 1", [stage_from_filter_record(record) for record in option_records])
+        )
+    return scenarios
+
+
 def create_new_project() -> Project:
     project = default_project()
     saved_filter_database = load_filter_database()
     if saved_filter_database or DEFAULT_FILTER_DATABASE_PATH.exists():
         project.filter_database = saved_filter_database
+    database_scenarios = default_scenarios_from_filter_database(project.filter_database)
+    if database_scenarios:
+        project.scenarios = database_scenarios
     now = datetime.now()
     project.project_info.project_name = f"New LCC Project {now:%Y-%m-%d %H:%M}"
     project.project_info.customer = ""

@@ -1,7 +1,7 @@
 from streamlit.testing.v1 import AppTest
 
 
-def test_scenario_editor_renders_multiple_geometry_fields_without_duplicate_ids():
+def test_scenario_editor_uses_database_filter_selection_only():
     app_test = AppTest.from_string(
         """
 from lcc_hvac_app.engine.models import FilterDatabaseRecord, FilterStage, Scenario
@@ -59,3 +59,9 @@ render_scenario_editor(
     app_test.run(timeout=10)
 
     assert not app_test.exception
+    assert len(app_test.number_input) == 0
+    assert all(
+        option != "Manual input"
+        for selectbox in app_test.selectbox
+        for option in selectbox.options
+    )

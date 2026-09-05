@@ -97,6 +97,11 @@ def _calculate_media_area_m2(width_mm: float, height_mm: float) -> float:
     return round(width_mm * height_mm / 1_000_000, 4)
 
 
+def _format_efficiency(value: float) -> str:
+    efficiency = value / 100.0 if value > 1 else value
+    return f"{efficiency * 100:,.1f}%"
+
+
 def _filter_label(record: FilterDatabaseRecord) -> str:
     dimensions = ""
     if record.width_mm and record.height_mm:
@@ -152,6 +157,38 @@ def _apply_selected_filter_id_to_session(
     record = filter_lookup.get(selected_filter_id)
     if record is not None:
         _apply_filter_record_to_session(record, scenario_name, row_index, key_prefix)
+
+
+def _record_to_stage(record: FilterDatabaseRecord) -> FilterStage:
+    return FilterStage(
+        stage=record.stage,
+        qty_per_ahu=record.qty_per_ahu,
+        dhc_g=record.dhc_g,
+        mass_efficiency=record.mass_efficiency,
+        avg_dp_pa=record.avg_dp_pa,
+        price_vnd_filter=record.price_vnd_filter,
+        width_mm=record.width_mm,
+        height_mm=record.height_mm,
+        media_area_m2=record.media_area_m2 or _calculate_media_area_m2(
+            record.width_mm,
+            record.height_mm,
+        ),
+        filter_id=record.filter_id,
+    )
+
+
+def _default_filter_index(
+    filter_options: list[str],
+    filter_lookup: dict[str, FilterDatabaseRecord],
+    stage: FilterStage,
+) -> int:
+    current_filter_id = getattr(stage, "filter_id", "")
+    if current_filter_id in filter_options:
+        return filter_options.index(current_filter_id)
+    for index, filter_id in enumerate(filter_options):
+        if filter_lookup[filter_id].stage == stage.stage:
+            return index
+    return 0
 
 
 def render_eurovent_dp_calculator(
@@ -256,18 +293,20 @@ def render_scenario_editor(
     filter_database: list[FilterDatabaseRecord] | None = None,
 ) -> Scenario:
     st.markdown("**Filter Stages**")
-    st.caption("Mass efficiency accepts decimal values such as 0.85 or percent values such as 85.")
+    st.caption("Choose filters from Filter Data. Scenario calculations use the saved database values.")
 
     stages = list(scenario.stages)
     add_key = f"add_{key_prefix or scenario.name}"
-    if st.button("Add Stage", key=add_key, width="stretch"):
-        stages.append(_blank_stage())
-
     edited_stages: list[FilterStage] = []
     database_records = filter_database or []
     filter_lookup = _database_lookup(database_records)
     if not filter_lookup:
-        st.info("No Filter ID is available yet. Add filters in the Filter Data section, then return here to select them.")
+        st.info("No Filter ID is available yet. Add filters in the Filter Data section, then return here to build scenarios.")
+        return Scenario(scenario.name, [])
+
+    if st.button("Add Stage", key=add_key, width="stretch"):
+        stages.append(_record_to_stage(filter_lookup[next(iter(filter_lookup))]))
+
     for index, stage in enumerate(stages):
         with st.container(border=True):
             title_col, remove_col = st.columns([5, 1])
@@ -280,161 +319,49 @@ def render_scenario_editor(
             if remove:
                 continue
 
-            filter_options = ["Manual input"] + list(filter_lookup.keys())
-            current_filter_id = getattr(stage, "filter_id", "")
-            filter_index = (
-                filter_options.index(current_filter_id)
-                if current_filter_id in filter_options
-                else 0
-            )
+            filter_options = list(filter_lookup.keys())
+            filter_index = _default_filter_index(filter_options, filter_lookup, stage)
             filter_key = _field_key(scenario.name, index, "filter_id", key_prefix)
             selected_filter_id = st.selectbox(
                 "Select Filter ID from Filter Data",
                 options=filter_options,
                 index=filter_index,
-                format_func=lambda value: (
-                    "Manual input"
-                    if value == "Manual input"
-                    else _filter_label(filter_lookup[value])
-                ),
+                format_func=lambda value: _filter_label(filter_lookup[value]),
                 key=filter_key,
-                help="Choose a filter from the Filter Data page. Its parameters load into the editable inputs below.",
-                on_change=_apply_selected_filter_id_to_session,
-                args=(filter_key, filter_lookup, scenario.name, index, key_prefix),
+                help="Choose a filter from the Filter Data page. Its saved parameters are used for this scenario.",
             )
-            selected_record = filter_lookup.get(selected_filter_id)
-            if selected_record is not None:
-                st.caption(
-                    "Selected filter values are loaded into the inputs below. You can still adjust any parameter for this scenario."
-                )
-                info_cols = st.columns(7)
-                info_cols[0].metric("Model", selected_record.model or "-")
-                info_cols[1].metric("ISO Class", selected_record.filter_class or "-")
-                info_cols[2].metric(
-                    "Size",
-                    f"{selected_record.width_mm:,.0f} x {selected_record.height_mm:,.0f} mm"
-                    if selected_record.width_mm and selected_record.height_mm
-                    else "-",
-                )
-                info_cols[3].metric("Qty/AHU", f"{selected_record.qty_per_ahu:,.0f}")
-                info_cols[4].metric("DHC", f"{selected_record.dhc_g:,.0f} g")
-                info_cols[5].metric("Avg DP", f"{selected_record.avg_dp_pa:,.0f} Pa")
-                info_cols[6].metric("Price", f"{selected_record.price_vnd_filter:,.0f}")
-                if st.button(
-                    "Reload parameters from selected filter",
-                    key=_field_key(scenario.name, index, "apply_filter", key_prefix),
-                    width="stretch",
-                ):
-                    _apply_filter_record_to_session(
-                        selected_record,
-                        scenario.name,
-                        index,
-                        key_prefix,
-                    )
-                    st.success(f"Applied {selected_record.filter_id} to this stage.")
+            selected_record = filter_lookup[selected_filter_id]
+            st.caption("Values below are read from Filter Data. Edit the database record if you need to change them.")
 
-            col1, col2, col3 = st.columns(3)
-            stage_options = list(STAGE_OPTIONS)
-            if stage.stage and stage.stage not in stage_options:
-                stage_options.append(stage.stage)
-            if selected_record is not None and selected_record.stage not in stage_options:
-                stage_options.append(selected_record.stage)
-            stage_name = col1.selectbox(
-                "Stage",
-                options=stage_options,
-                index=stage_options.index(stage.stage) if stage.stage in stage_options else 0,
-                key=_field_key(scenario.name, index, "stage", key_prefix),
-            )
-            qty_per_ahu = col2.number_input(
-                "Quantity per AHU",
-                min_value=0.0,
-                value=float(stage.qty_per_ahu),
-                step=1.0,
-                key=_field_key(scenario.name, index, "qty_per_ahu", key_prefix),
-            )
-            dhc_g = col3.number_input(
-                "Dust Holding Capacity (g)",
-                min_value=0.0,
-                value=float(stage.dhc_g),
-                step=50.0,
-                key=_field_key(scenario.name, index, "dhc_g", key_prefix),
+            info_cols = st.columns(4)
+            info_cols[0].metric("Stage", selected_record.stage or "-")
+            info_cols[1].metric("Model", selected_record.model or "-")
+            info_cols[2].metric("ISO Class", selected_record.filter_class or "-")
+            info_cols[3].metric(
+                "Size",
+                f"{selected_record.width_mm:,.0f} x {selected_record.height_mm:,.0f} mm"
+                if selected_record.width_mm and selected_record.height_mm
+                else "-",
             )
 
-            col4, col5, col6 = st.columns(3)
-            avg_dp_key = _field_key(scenario.name, index, "avg_dp_pa", key_prefix)
-            eurovent_iso_group, eurovent_mx_g, eurovent_curve = render_eurovent_dp_calculator(
-                stage,
-                index,
-                key_prefix,
-                avg_dp_key,
-            )
-            mass_efficiency = col4.number_input(
-                "Mass Efficiency",
-                min_value=0.0,
-                value=float(stage.mass_efficiency),
-                step=0.01,
-                key=_field_key(scenario.name, index, "mass_efficiency", key_prefix),
-            )
-            avg_dp_pa = col5.number_input(
-                "Average Pressure Drop (Pa)",
-                min_value=0.0,
-                value=float(stage.avg_dp_pa),
-                step=5.0,
-                key=avg_dp_key,
-            )
-            price_vnd_filter = col6.number_input(
-                "Price per Filter",
-                min_value=0.0,
-                value=float(stage.price_vnd_filter),
-                step=10000.0,
-                key=_field_key(scenario.name, index, "price_vnd_filter", key_prefix),
-            )
+            value_cols = st.columns(6)
+            value_cols[0].metric("Qty/AHU", f"{selected_record.qty_per_ahu:,.0f}")
+            value_cols[1].metric("DHC", f"{selected_record.dhc_g:,.0f} g")
+            value_cols[2].metric("Mass Eff.", _format_efficiency(selected_record.mass_efficiency))
+            value_cols[3].metric("Avg DP", f"{selected_record.avg_dp_pa:,.0f} Pa")
+            value_cols[4].metric("Final DP", f"{selected_record.final_dp_pa:,.0f} Pa")
+            value_cols[5].metric("Price", f"{selected_record.price_vnd_filter:,.0f}")
 
-            with st.expander("Geometry check", expanded=False):
-                geo_col1, geo_col2, geo_col3 = st.columns(3)
-                width_mm = geo_col1.number_input(
-                    "Width (mm)",
-                    min_value=0.0,
-                    value=float(getattr(stage, "width_mm", 0.0)),
-                    step=1.0,
-                    key=_field_key(scenario.name, index, "width_mm", key_prefix),
-                )
-                height_mm = geo_col2.number_input(
-                    "Height (mm)",
-                    min_value=0.0,
-                    value=float(getattr(stage, "height_mm", 0.0)),
-                    step=1.0,
-                    key=_field_key(scenario.name, index, "height_mm", key_prefix),
-                )
-                media_area_m2 = _calculate_media_area_m2(width_mm, height_mm)
-                geo_col3.number_input(
-                    "Media area/filter (m2)",
-                    min_value=0.0,
-                    value=media_area_m2,
-                    step=0.01,
-                    disabled=True,
-                    key=_field_key(scenario.name, index, "media_area_m2", key_prefix),
-                    help="Calculated from Width x Height / 1,000,000 for app consistency.",
-                )
+            geometry_cols = st.columns(3)
+            media_area = selected_record.media_area_m2 or _calculate_media_area_m2(
+                selected_record.width_mm,
+                selected_record.height_mm,
+            )
+            geometry_cols[0].metric("Width", f"{selected_record.width_mm:,.0f} mm")
+            geometry_cols[1].metric("Height", f"{selected_record.height_mm:,.0f} mm")
+            geometry_cols[2].metric("Media area/filter", f"{media_area:,.4f} m2")
 
-            if stage_name.strip():
-                edited_stages.append(
-                    FilterStage(
-                        stage=stage_name.strip(),
-                        qty_per_ahu=qty_per_ahu,
-                        dhc_g=dhc_g,
-                        mass_efficiency=mass_efficiency,
-                        avg_dp_pa=avg_dp_pa,
-                        price_vnd_filter=price_vnd_filter,
-                        width_mm=width_mm,
-                        height_mm=height_mm,
-                        media_area_m2=media_area_m2,
-                        filter_id="" if selected_filter_id == "Manual input" else selected_filter_id,
-                        eurovent_iso_group=eurovent_iso_group,
-                        eurovent_mx_g=eurovent_mx_g,
-                        eurovent_curve=eurovent_curve,
-                    )
-                )
+            edited_stages.append(_record_to_stage(selected_record))
 
     return Scenario(scenario.name, edited_stages)
 
