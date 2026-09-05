@@ -76,18 +76,28 @@ def calculate_stage_tco(
     tco_year = filter_cost + energy_cost + labor_disposal_cost
     face_area = calculate_face_area_m2(stage.width_mm, stage.height_mm)
     media_area = stage.media_area_m2
+    airflow_per_filter = (
+        assumptions.airflow_m3_h_per_ahu / stage.qty_per_ahu
+        if stage.qty_per_ahu > 0
+        else 0.0
+    )
+    airflow_loading_percent = (
+        airflow_per_filter / stage.rated_airflow_m3_h_filter * 100.0
+        if stage.rated_airflow_m3_h_filter > 0
+        else 0.0
+    )
     return {
         "stage": stage.stage,
         "qty_per_ahu": stage.qty_per_ahu,
+        "rated_airflow_m3_h_filter": stage.rated_airflow_m3_h_filter,
         "width_mm": stage.width_mm,
         "height_mm": stage.height_mm,
         "face_area_m2": face_area,
         "total_face_area_m2": face_area * stage.qty_per_ahu,
         "media_area_m2": media_area,
         "total_media_area_m2": media_area * stage.qty_per_ahu,
-        "airflow_per_filter_m3_h": assumptions.airflow_m3_h_per_ahu / stage.qty_per_ahu
-        if stage.qty_per_ahu > 0
-        else 0.0,
+        "airflow_per_filter_m3_h": airflow_per_filter,
+        "airflow_loading_percent": airflow_loading_percent,
         "face_velocity_m_s": calculate_face_velocity_m_s(
             assumptions.airflow_m3_h_per_ahu,
             face_area,

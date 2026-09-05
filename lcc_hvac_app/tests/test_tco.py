@@ -95,6 +95,7 @@ def test_stage_tco_includes_geometry_checks():
                 width_mm=592,
                 height_mm=592,
                 media_area_m2=0.3505,
+                rated_airflow_m3_h_filter=1000,
             )
         ],
     )
@@ -104,5 +105,7 @@ def test_stage_tco_includes_geometry_checks():
     assert round(stage["face_area_m2"], 4) == 0.3505
     assert round(stage["total_face_area_m2"], 3) == 7.009
     assert stage["airflow_per_filter_m3_h"] == 1000
+    assert stage["rated_airflow_m3_h_filter"] == 1000
+    assert stage["airflow_loading_percent"] == 100
     assert round(stage["face_velocity_m_s"], 2) == 0.79
     assert round(stage["media_velocity_m_s"], 2) == 0.79

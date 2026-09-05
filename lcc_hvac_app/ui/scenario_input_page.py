@@ -186,6 +186,7 @@ def _record_to_stage(
             record.width_mm,
             record.height_mm,
         ),
+        rated_airflow_m3_h_filter=record.rated_airflow_m3_h_filter,
         filter_id=record.filter_id,
     )
 
@@ -378,7 +379,7 @@ def render_scenario_editor(
             value_cols[5].metric("Price", f"{selected_record.price_vnd_filter:,.0f}")
             st.caption(f"Mass efficiency source: {efficiency_source}")
 
-            geometry_cols = st.columns(3)
+            geometry_cols = st.columns(4)
             media_area = selected_record.media_area_m2 or _calculate_media_area_m2(
                 selected_record.width_mm,
                 selected_record.height_mm,
@@ -386,6 +387,12 @@ def render_scenario_editor(
             geometry_cols[0].metric("Width", f"{selected_record.width_mm:,.0f} mm")
             geometry_cols[1].metric("Height", f"{selected_record.height_mm:,.0f} mm")
             geometry_cols[2].metric("Media area/filter", f"{media_area:,.4f} m2")
+            geometry_cols[3].metric(
+                "Rated airflow/filter",
+                f"{selected_record.rated_airflow_m3_h_filter:,.0f} m3/h"
+                if selected_record.rated_airflow_m3_h_filter
+                else "-",
+            )
 
             edited_stages.append(_record_to_stage(selected_record, outdoor_environment))
 
@@ -406,6 +413,7 @@ def copy_scenario(source: Scenario, target_name: str) -> Scenario:
                 width_mm=getattr(stage, "width_mm", 0.0),
                 height_mm=getattr(stage, "height_mm", 0.0),
                 media_area_m2=getattr(stage, "media_area_m2", 0.0),
+                rated_airflow_m3_h_filter=getattr(stage, "rated_airflow_m3_h_filter", 0.0),
                 filter_id=getattr(stage, "filter_id", ""),
                 eurovent_iso_group=getattr(stage, "eurovent_iso_group", "ISO ePM1"),
                 eurovent_mx_g=getattr(stage, "eurovent_mx_g", 200.0),

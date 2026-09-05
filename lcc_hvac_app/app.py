@@ -438,6 +438,8 @@ def ensure_project_schema(project: Project) -> None:
                 stage.height_mm = 0.0
             if not hasattr(stage, "media_area_m2"):
                 stage.media_area_m2 = 0.0
+            if not hasattr(stage, "rated_airflow_m3_h_filter"):
+                stage.rated_airflow_m3_h_filter = 0.0
             if not hasattr(stage, "eurovent_iso_group"):
                 stage.eurovent_iso_group = "ISO ePM1"
             if not hasattr(stage, "eurovent_mx_g"):
@@ -469,6 +471,7 @@ def stage_from_filter_record(
         width_mm=record.width_mm,
         height_mm=record.height_mm,
         media_area_m2=record.media_area_m2,
+        rated_airflow_m3_h_filter=record.rated_airflow_m3_h_filter,
         filter_id=record.filter_id,
     )
 

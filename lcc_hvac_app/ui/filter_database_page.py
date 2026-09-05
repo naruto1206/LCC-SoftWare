@@ -28,6 +28,7 @@ DATABASE_COLUMNS = [
     "model",
     "filter_class",
     "qty_per_ahu",
+    "rated_airflow_m3_h_filter",
     "width_mm",
     "height_mm",
     "media_area_m2",
@@ -52,6 +53,7 @@ DISPLAY_COLUMNS = {
     "model": "Filter model / description",
     "filter_class": "ISO Class",
     "qty_per_ahu": "Qty/AHU",
+    "rated_airflow_m3_h_filter": "Rated airflow/filter (m3/h)",
     "width_mm": "Width (mm)",
     "height_mm": "Height (mm)",
     "media_area_m2": "Media area/filter (m2)",
@@ -93,6 +95,18 @@ COLUMN_ALIASES = {
     "model": ["model", "filter model", "filter model / description", "description", "product", "item"],
     "filter_class": ["iso class", "class", "grade", "filter class", "en class"],
     "qty_per_ahu": ["qty/ahu", "qty ahu", "quantity/ahu", "quantity per ahu", "qty per ahu"],
+    "rated_airflow_m3_h_filter": [
+        "rated airflow/filter",
+        "rated airflow/filter (m3/h)",
+        "rated airflow per filter",
+        "rated airflow per filter (m3/h)",
+        "nominal airflow",
+        "nominal airflow/filter",
+        "airflow/filter",
+        "airflow per filter",
+        "air flow",
+        "airflow",
+    ],
     "width_mm": ["width", "width mm", "width (mm)", "w", "w mm"],
     "height_mm": ["height", "height mm", "height (mm)", "h", "h mm"],
     "media_area_m2": [
@@ -187,6 +201,7 @@ def empty_display_row() -> dict[str, Any]:
             "DHC (g)",
             "DHC/filter direct (g)",
             "Qty/AHU",
+            "Rated airflow/filter (m3/h)",
             "Width (mm)",
             "Height (mm)",
             "Media area/filter (m2)",
@@ -437,6 +452,7 @@ def _missing_filter_record_fields(row: dict[str, Any]) -> list[str]:
         "Qty/AHU",
         "Width (mm)",
         "Height (mm)",
+        "Rated airflow/filter (m3/h)",
         "DHC/filter direct (g)",
         "Initial DP (Pa)",
         "Avg DP (Pa)",
@@ -511,6 +527,14 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             index=_option_index(iso_class_options, _row_value(selected_row, "ISO Class")),
             key=f"iso_class_{form_key}",
             help="Reference only. This field helps identify the selected filter and is not used directly in LCC calculation.",
+        )
+        rated_airflow = col6.number_input(
+            "Rated airflow/filter (m3/h)",
+            min_value=0.0,
+            value=float(_row_value(selected_row, "Rated airflow/filter (m3/h)", 0.0)),
+            step=100.0,
+            key=f"rated_airflow_{form_key}",
+            help="Catalog or supplier rated airflow for one filter. Used for project airflow checking.",
         )
         parsed_iso = parse_iso_class_efficiencies(iso_class)
 
@@ -628,6 +652,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             epm10_percent,
             coarse_percent,
             current_outdoor_environment(),
+            iso_class,
         )
         profile = environment_profile(current_outdoor_environment())
         st.caption(
@@ -655,6 +680,7 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             "Filter model / description": model,
             "ISO Class": iso_class,
             "Qty/AHU": qty_per_ahu,
+            "Rated airflow/filter (m3/h)": rated_airflow,
             "Width (mm)": width_mm,
             "Height (mm)": height_mm,
             "Media area/filter (m2)": media_area,
@@ -713,6 +739,9 @@ def dataframe_to_records(dataframe: pd.DataFrame) -> list[FilterDatabaseRecord]:
                 model=str(row.get("model", "")).strip(),
                 filter_class=str(row.get("filter_class", "")).strip(),
                 qty_per_ahu=_to_float(row.get("qty_per_ahu", 1)),
+                rated_airflow_m3_h_filter=_to_float(
+                    row.get("rated_airflow_m3_h_filter", 0)
+                ),
                 width_mm=_to_float(row.get("width_mm", 0)),
                 height_mm=_to_float(row.get("height_mm", 0)),
                 media_area_m2=_to_float(row.get("media_area_m2", 0)),
@@ -805,6 +834,7 @@ def normalize_uploaded_database(dataframe: pd.DataFrame) -> pd.DataFrame:
     for number_column in [
         "dhc_g",
         "qty_per_ahu",
+        "rated_airflow_m3_h_filter",
         "width_mm",
         "height_mm",
         "media_area_m2",
@@ -872,6 +902,7 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
         "Filter model / description": 34,
         "ISO Class": 18,
         "Qty/AHU": 12,
+        "Rated airflow/filter (m3/h)": 24,
         "Width (mm)": 12,
         "Height (mm)": 12,
         "Media area/filter (m2)": 20,
@@ -890,6 +921,7 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
     }
     number_formats = {
         "Qty/AHU": "0",
+        "Rated airflow/filter (m3/h)": "0",
         "Width (mm)": "0",
         "Height (mm)": "0",
         "Media area/filter (m2)": "0.00",
@@ -911,6 +943,7 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
         "Filter model / description": required_fill,
         "ISO Class": required_fill,
         "Qty/AHU": dimension_fill,
+        "Rated airflow/filter (m3/h)": dimension_fill,
         "Width (mm)": dimension_fill,
         "Height (mm)": dimension_fill,
         "Media area/filter (m2)": dimension_fill,
@@ -936,6 +969,7 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
         "ePM10 %": "Optional ISO 16890 value used to estimate Mass Eff. when direct Mass Eff. is not available.",
         "ISO Coarse %": "Optional coarse arrestance value used to estimate Mass Eff. when direct Mass Eff. is not available.",
         "Price/filter (VND)": "Enter price for one filter, not total project price.",
+        "Rated airflow/filter (m3/h)": "Catalog or supplier rated airflow for one filter. The app compares this with project airflow/filter.",
     }
 
     for cell in worksheet[1]:

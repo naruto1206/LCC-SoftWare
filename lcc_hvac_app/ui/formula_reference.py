@@ -21,6 +21,11 @@ FORMULA_REFERENCE = [
         "Unit": "%",
     },
     {
+        "Result": "Airflow loading",
+        "Formula": "Project airflow/filter / Rated airflow/filter x 100",
+        "Unit": "%",
+    },
+    {
         "Result": "Dust to next stage",
         "Formula": "Dust entering - Dust captured",
         "Unit": "g/day/filter",

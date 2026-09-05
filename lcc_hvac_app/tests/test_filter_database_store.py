@@ -15,6 +15,7 @@ def test_filter_database_csv_round_trip(tmp_path):
             model="Test model",
             filter_class="ISO ePM1 80%",
             qty_per_ahu=20,
+            rated_airflow_m3_h_filter=1000,
             width_mm=592,
             height_mm=592,
             media_area_m2=12.5,
@@ -36,6 +37,7 @@ def test_filter_database_csv_round_trip(tmp_path):
     assert loaded[0].stage == "Fine-filter"
     assert loaded[0].filter_class == "ISO ePM1 80%"
     assert loaded[0].qty_per_ahu == 20
+    assert loaded[0].rated_airflow_m3_h_filter == 1000
     assert loaded[0].width_mm == 592
     assert loaded[0].height_mm == 592
     assert loaded[0].media_area_m2 == 12.5

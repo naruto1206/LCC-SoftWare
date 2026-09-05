@@ -11,6 +11,9 @@ MODEL_COLUMNS = [
     "Scenario",
     "Filter Stage",
     "Qty/AHU",
+    "Rated Airflow/filter (m3/h)",
+    "Project Airflow/filter (m3/h)",
+    "Airflow Loading %",
     "Width (mm)",
     "Height (mm)",
     "Face Area (m2)",
@@ -41,6 +44,13 @@ def _stage_model_rows(stages: list[dict[str, object]], currency: str) -> list[di
                 "Scenario": str(row["scenario"]),
                 "Filter Stage": str(row["stage"]),
                 "Qty/AHU": number(float(row["qty_per_ahu"]), 0),
+                "Rated Airflow/filter (m3/h)": number(
+                    float(row.get("rated_airflow_m3_h_filter", 0)), 0
+                ),
+                "Project Airflow/filter (m3/h)": number(
+                    float(row.get("airflow_per_filter_m3_h", 0)), 0
+                ),
+                "Airflow Loading %": f"{float(row.get('airflow_loading_percent', 0)):,.1f}%",
                 "Width (mm)": number(float(row.get("width_mm", 0)), 0),
                 "Height (mm)": number(float(row.get("height_mm", 0)), 0),
                 "Face Area (m2)": number(float(row.get("face_area_m2", 0)), 4),
@@ -76,6 +86,9 @@ def _raw_stage_dataframe(stages: list[dict[str, object]]) -> pd.DataFrame:
         "scenario",
         "stage",
         "qty_per_ahu",
+        "rated_airflow_m3_h_filter",
+        "airflow_per_filter_m3_h",
+        "airflow_loading_percent",
         "width_mm",
         "height_mm",
         "face_area_m2",

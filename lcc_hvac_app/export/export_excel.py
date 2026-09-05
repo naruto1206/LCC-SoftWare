@@ -35,6 +35,11 @@ FORMULA_REFERENCE = [
         "Unit": "m2/filter",
     },
     {
+        "Formula name": "Airflow loading",
+        "Formula": "Project airflow/filter / Rated airflow/filter x 100",
+        "Unit": "%",
+    },
+    {
         "Formula name": "Face velocity",
         "Formula": "Airflow(m3/s) / (Face area x Qty/AHU)",
         "Unit": "m/s",

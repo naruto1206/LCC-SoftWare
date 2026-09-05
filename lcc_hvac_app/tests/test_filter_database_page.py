@@ -65,7 +65,7 @@ def test_dataframe_to_excel_bytes_exports_filter_database_sheet():
     assert worksheet["A2"].fill.fgColor.rgb == "00DCFCE7"
     assert worksheet.freeze_panes == "A2"
     assert len(worksheet.data_validations.dataValidation) >= 1
-    assert worksheet["I2"].value == "=IF(AND(G2>0,H2>0),ROUND(G2*H2/1000000,4),0)"
+    assert worksheet["J2"].value == "=IF(AND(H2>0,I2>0),ROUND(H2*I2/1000000,4),0)"
     assert "ePM1 %" in [cell.value for cell in worksheet[1]]
     assert "Mass Eff. Source" in [cell.value for cell in worksheet[1]]
     assert any(
@@ -100,6 +100,7 @@ def test_normalize_uploaded_database_imports_qty_per_ahu():
                 "ISO Class": "ISO Coarse 70%",
                 "Size": "592x287x46",
                 "Qty/AHU": 20,
+                "Rated airflow/filter (m3/h)": 1000,
                 "DHC to final DP (g)": 600,
                 "Area (m2)": 1.2,
                 "Eurovent Avg DP (Pa)": 85,
@@ -114,6 +115,7 @@ def test_normalize_uploaded_database_imports_qty_per_ahu():
     assert normalized.loc[0, "Filter ID"] == "PF-A"
     assert normalized.loc[0, "ISO Class"] == "ISO Coarse 70%"
     assert normalized.loc[0, "Qty/AHU"] == 20
+    assert normalized.loc[0, "Rated airflow/filter (m3/h)"] == 1000
     assert normalized.loc[0, "Width (mm)"] == 592
     assert normalized.loc[0, "Height (mm)"] == 287
     assert normalized.loc[0, "DHC/filter direct (g)"] == 600
