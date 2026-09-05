@@ -73,6 +73,50 @@ DISPLAY_COLUMNS = {
     "notes": "Notes",
 }
 
+DHC_DATABASE_DISPLAY_COLUMNS = [
+    "Filter ID",
+    "Supplier",
+    "Stage",
+    "Filter model / description",
+    "Filter Class",
+    "Qty/AHU",
+    "Rated airflow/filter (m3/h)",
+    "Width (mm)",
+    "Height (mm)",
+    "Media area/filter (m2)",
+    "DHC/filter direct (g)",
+    "Initial DP (Pa)",
+    "Avg DP (Pa)",
+    "Final DP (Pa)",
+    "ePM1 %",
+    "ePM2.5 %",
+    "ePM10 %",
+    "ISO Coarse %",
+    "Mass Eff. %",
+    "Mass Eff. Source",
+    "Price/filter (VND)",
+    "Notes",
+]
+
+FILTER_LIFE_DATABASE_DISPLAY_COLUMNS = [
+    "Filter ID",
+    "Supplier",
+    "Stage",
+    "Filter model / description",
+    "Filter Class",
+    "Qty/AHU",
+    "Rated airflow/filter (m3/h)",
+    "Target filter life (days)",
+    "Width (mm)",
+    "Height (mm)",
+    "Media area/filter (m2)",
+    "Initial DP (Pa)",
+    "Avg DP (Pa)",
+    "Final DP (Pa)",
+    "Price/filter (VND)",
+    "Notes",
+]
+
 STAGE_OPTIONS = [
     "",
     "Pre-filter",
@@ -294,6 +338,21 @@ def current_calculation_method() -> str:
     project = st.session_state.get("project")
     assumptions = getattr(project, "assumptions", None)
     return getattr(assumptions, "calculation_method", "DHC-based")
+
+
+def display_columns_for_calculation_method(calculation_method: str) -> list[str]:
+    if calculation_method == "Filter life-based":
+        return FILTER_LIFE_DATABASE_DISPLAY_COLUMNS
+    return DHC_DATABASE_DISPLAY_COLUMNS
+
+
+def visible_filter_database_dataframe(
+    dataframe: pd.DataFrame,
+    calculation_method: str,
+) -> pd.DataFrame:
+    normalized = normalize_display_dataframe(dataframe)
+    columns = display_columns_for_calculation_method(calculation_method)
+    return normalized.reindex(columns=columns, fill_value="")
 
 
 def calculate_effective_mass_efficiency_for_row(row: pd.Series | dict[str, Any]) -> tuple[float, str]:
@@ -947,10 +1006,13 @@ def read_excel_database(uploaded_file: Any, sheet_name: str) -> pd.DataFrame:
     return normalize_uploaded_database(raw)
 
 
-def dataframe_to_excel_bytes(dataframe: pd.DataFrame) -> bytes:
+def dataframe_to_excel_bytes(
+    dataframe: pd.DataFrame,
+    calculation_method: str = "DHC-based",
+) -> bytes:
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
-        normalize_display_dataframe(dataframe).to_excel(
+        visible_filter_database_dataframe(dataframe, calculation_method).to_excel(
             writer,
             index=False,
             sheet_name="Filter_Database",
@@ -1208,12 +1270,13 @@ def render_filter_record_edit_tools(saved_df: pd.DataFrame) -> None:
 
 
 def render_filter_database(records: list[FilterDatabaseRecord]) -> list[FilterDatabaseRecord]:
+    calculation_method = current_calculation_method()
     st.subheader("Filter Database")
     st.caption(
         "Upload an Excel filter database or edit rows manually. Changes stay in your own session, so different users do not overwrite each other."
     )
     st.info(
-        "Session database: upload or enter filters for this project, then download CSV/Excel if you want to keep a copy. "
+        f"{calculation_method} database: upload or enter filters for this project, then download Excel if you want to keep a copy. "
         "The shared GitHub database is not changed by online users."
     )
 
@@ -1259,9 +1322,10 @@ def render_filter_database(records: list[FilterDatabaseRecord]) -> list[FilterDa
     render_quick_add_filter_form(current_df)
 
     saved_df = normalize_display_dataframe(st.session_state.get("filter_database_data"))
+    visible_saved_df = visible_filter_database_dataframe(saved_df, calculation_method)
     st.markdown("**Filter Records**")
     st.caption("Use the form above to add or edit filters. This table is for review and selection in Scenarios.")
-    st.dataframe(saved_df, width="stretch", hide_index=True)
+    st.dataframe(visible_saved_df, width="stretch", hide_index=True)
     render_filter_record_edit_tools(saved_df)
     saved_df = render_filter_record_delete_tools(saved_df)
 
@@ -1276,8 +1340,12 @@ def render_filter_database(records: list[FilterDatabaseRecord]) -> list[FilterDa
         st.rerun()
     col2.download_button(
         "Download formatted Excel database",
-        data=dataframe_to_excel_bytes(saved_df),
-        file_name="filter_database.xlsx",
+        data=dataframe_to_excel_bytes(saved_df, calculation_method),
+        file_name=(
+            "filter_life_database.xlsx"
+            if calculation_method == "Filter life-based"
+            else "dhc_filter_database.xlsx"
+        ),
         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
         width="stretch",
     )

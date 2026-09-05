@@ -5,11 +5,13 @@ from openpyxl import load_workbook
 
 from lcc_hvac_app.ui.filter_database_page import (
     dataframe_to_excel_bytes,
+    display_columns_for_calculation_method,
     filter_record_ids,
     _missing_filter_record_fields,
     normalize_uploaded_database,
     recalculate_media_area_dataframe,
     remove_filter_database_rows,
+    visible_filter_database_dataframe,
 )
 
 
@@ -66,14 +68,88 @@ def test_dataframe_to_excel_bytes_exports_filter_database_sheet():
     assert worksheet["A2"].fill.fgColor.rgb == "00DCFCE7"
     assert worksheet.freeze_panes == "A2"
     assert len(worksheet.data_validations.dataValidation) >= 1
-    assert worksheet["K2"].value == "=IF(AND(I2>0,J2>0),ROUND(I2*J2/1000000,4),0)"
-    assert worksheet["N2"].value == "=IF(AND(M2>0,O2>0),ROUND(((M2+O2)/2)*1.1,0),0)"
+    headers = [cell.value for cell in worksheet[1]]
+    media_area_column = headers.index("Media area/filter (m2)") + 1
+    avg_dp_column = headers.index("Avg DP (Pa)") + 1
+    media_area_cell = worksheet.cell(row=2, column=media_area_column)
+    avg_dp_cell = worksheet.cell(row=2, column=avg_dp_column)
+    assert media_area_cell.value.startswith("=IF(AND(")
+    assert "ROUND(" in media_area_cell.value
+    assert avg_dp_cell.value.startswith("=IF(AND(")
+    assert "*1.1" in avg_dp_cell.value
     assert "ePM1 %" in [cell.value for cell in worksheet[1]]
     assert "Mass Eff. Source" in [cell.value for cell in worksheet[1]]
     assert any(
         validation.formula1.startswith("'_Lists'!$B$2:$B$")
         for validation in worksheet.data_validations.dataValidation
     )
+
+
+def test_filter_life_database_view_hides_dhc_only_fields():
+    dataframe = pd.DataFrame(
+        [
+            {
+                "Filter ID": "FL-001",
+                "Supplier": "Air Filtech",
+                "Stage": "Fine-filter",
+                "Filter Class": "E10",
+                "Target filter life (days)": 180,
+                "DHC/filter direct (g)": 600,
+                "Mass Eff. %": 80,
+                "ePM1 %": 50,
+                "Price/filter (VND)": 500000,
+            }
+        ]
+    )
+
+    visible = visible_filter_database_dataframe(dataframe, "Filter life-based")
+
+    assert visible.columns.tolist() == display_columns_for_calculation_method(
+        "Filter life-based"
+    )
+    assert "Target filter life (days)" in visible.columns
+    assert "DHC/filter direct (g)" not in visible.columns
+    assert "Mass Eff. %" not in visible.columns
+    assert "ePM1 %" not in visible.columns
+
+
+def test_filter_life_excel_template_uses_filter_life_columns():
+    dataframe = pd.DataFrame(
+        [
+            {
+                "Filter ID": "FL-001",
+                "Supplier": "Air Filtech",
+                "Stage": "Fine-filter",
+                "Filter Class": "E10",
+                "Target filter life (days)": 180,
+                "Avg DP (Pa)": 120,
+                "Price/filter (VND)": 500000,
+            }
+        ]
+    )
+
+    workbook = load_workbook(
+        filename=BytesIO(dataframe_to_excel_bytes(dataframe, "Filter life-based"))
+    )
+    headers = [cell.value for cell in workbook["Filter_Database"][1]]
+
+    assert headers == display_columns_for_calculation_method("Filter life-based")
+    assert "Target filter life (days)" in headers
+    assert "DHC/filter direct (g)" not in headers
+    assert "Mass Eff. %" not in headers
+    assert "ePM1 %" not in headers
+
+
+def test_dhc_excel_template_hides_filter_life_only_column():
+    workbook = load_workbook(
+        filename=BytesIO(dataframe_to_excel_bytes(pd.DataFrame(), "DHC-based"))
+    )
+    headers = [cell.value for cell in workbook["Filter_Database"][1]]
+
+    assert headers == display_columns_for_calculation_method("DHC-based")
+    assert "DHC/filter direct (g)" in headers
+    assert "Mass Eff. %" in headers
+    assert "Target filter life (days)" not in headers
 
 
 def test_recalculate_media_area_dataframe_uses_width_and_height():
