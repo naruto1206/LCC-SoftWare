@@ -47,15 +47,42 @@ STAGE_COLUMNS = [
     "tco_year",
 ]
 
+FILTER_LIFE_STAGE_COLUMNS = [
+    "scenario",
+    "stage",
+    "qty_per_ahu",
+    "rated_airflow_m3_h_filter",
+    "airflow_per_filter_m3_h",
+    "airflow_loading_percent",
+    "target_filter_life_days",
+    "filter_life_source",
+    "width_mm",
+    "height_mm",
+    "face_area_m2",
+    "media_area_m2",
+    "face_velocity_m_s",
+    "media_velocity_m_s",
+    "life_days",
+    "replacement_year",
+    "filter_cost_year",
+    "energy_cost_year",
+    "labor_disposal_cost_year",
+    "tco_year",
+]
 
-def render_results(comparison: dict[str, object], currency: str) -> None:
+
+def render_results(
+    comparison: dict[str, object],
+    currency: str,
+    calculation_method: str = "DHC-based",
+) -> None:
     summaries = pd.DataFrame(comparison["summaries"])
     stages = pd.DataFrame(comparison["stages"])
     if summaries.empty:
         st.info("No results yet.")
         return
 
-    render_formula_reference()
+    render_formula_reference(calculation_method=calculation_method)
 
     st.markdown("**Scenario Comparison**")
     st.dataframe(summaries[SUMMARY_COLUMNS], width="stretch", hide_index=True)
@@ -68,4 +95,9 @@ def render_results(comparison: dict[str, object], currency: str) -> None:
     )
 
     st.markdown("**Stage-Level Calculation Detail**")
-    st.dataframe(stages[STAGE_COLUMNS], width="stretch", hide_index=True)
+    stage_columns = (
+        FILTER_LIFE_STAGE_COLUMNS
+        if calculation_method == "Filter life-based"
+        else STAGE_COLUMNS
+    )
+    st.dataframe(stages[stage_columns], width="stretch", hide_index=True)

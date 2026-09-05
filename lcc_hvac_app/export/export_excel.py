@@ -76,6 +76,85 @@ FORMULA_REFERENCE = [
     },
 ]
 
+FILTER_LIFE_HIDDEN_FORMULAS = {
+    "Dust entering",
+    "Dust captured",
+    "Estimated Mass Efficiency",
+}
+
+FILTER_LIFE_HIDDEN_ASSUMPTIONS = {
+    "outdoor_environment",
+    "advanced_dust_override",
+    "dust_concentration_mg_m3",
+    "environment_factor",
+}
+
+FILTER_LIFE_HIDDEN_SUMMARY_ITEMS = {
+    "Outdoor Environment",
+    "Advanced dust override",
+    "Dust concentration (mg/m3)",
+    "Environment factor",
+}
+
+FILTER_LIFE_STAGE_INPUT_COLUMNS = [
+    "stage",
+    "qty_per_ahu",
+    "avg_dp_pa",
+    "price_vnd_filter",
+    "width_mm",
+    "height_mm",
+    "media_area_m2",
+    "rated_airflow_m3_h_filter",
+    "target_filter_life_days",
+    "filter_id",
+]
+
+FILTER_LIFE_STAGE_RESULT_COLUMNS = [
+    "scenario",
+    "stage",
+    "qty_per_ahu",
+    "rated_airflow_m3_h_filter",
+    "target_filter_life_days",
+    "filter_life_source",
+    "width_mm",
+    "height_mm",
+    "face_area_m2",
+    "media_area_m2",
+    "airflow_per_filter_m3_h",
+    "airflow_loading_percent",
+    "face_velocity_m_s",
+    "media_velocity_m_s",
+    "avg_dp_pa",
+    "price_vnd_filter",
+    "life_days",
+    "replacement_year",
+    "filter_cost_year",
+    "energy_kwh_year",
+    "energy_cost_year",
+    "labor_disposal_cost_year",
+    "co2_kg_year",
+    "tco_year",
+]
+
+FILTER_DATABASE_DISPLAY_COLUMNS = {
+    "filter_id": "Filter ID",
+    "supplier": "Supplier",
+    "stage": "Stage",
+    "model": "Filter model / description",
+    "filter_class": "Filter Class",
+    "qty_per_ahu": "Qty/AHU",
+    "rated_airflow_m3_h_filter": "Rated airflow/filter (m3/h)",
+    "target_filter_life_days": "Target filter life (days)",
+    "width_mm": "Width (mm)",
+    "height_mm": "Height (mm)",
+    "media_area_m2": "Media area/filter (m2)",
+    "initial_dp_pa": "Initial DP (Pa)",
+    "avg_dp_pa": "Avg DP (Pa)",
+    "final_dp_pa": "Final DP (Pa)",
+    "price_vnd_filter": "Price/filter (VND)",
+    "notes": "Notes",
+}
+
 
 def _sheet_name(scenario_name: str) -> str:
     cleaned = scenario_name.replace("/", " ").replace("-", " ")
@@ -90,7 +169,7 @@ def _project_summary_rows(project: Project, comparison: dict[str, Any]) -> list[
     base = summaries[0] if summaries else {}
     best_name = comparison.get("best_option")
     best = next((row for row in summaries if row["scenario"] == best_name), base)
-    return [
+    rows = [
         {"Item": "Project name", "Value": info.project_name},
         {"Item": "Customer", "Value": info.customer},
         {"Item": "Location", "Value": info.location},
@@ -113,9 +192,20 @@ def _project_summary_rows(project: Project, comparison: dict[str, Any]) -> list[
         {"Item": "5-year saving", "Value": best.get("saving_vs_base", 0) * 5},
         {"Item": "CO2/year", "Value": best.get("co2_kg_year", 0)},
     ]
+    if assumptions.calculation_method == "Filter life-based":
+        return [
+            row
+            for row in rows
+            if row["Item"] not in FILTER_LIFE_HIDDEN_SUMMARY_ITEMS
+        ]
+    return rows
 
 
-def _stage_input_rows(project: Project, scenario_name: str) -> list[dict[str, Any]]:
+def _stage_input_rows(
+    project: Project,
+    scenario_name: str,
+    calculation_method: str = "DHC-based",
+) -> list[dict[str, Any]]:
     scenario = next((item for item in project.scenarios if item.name == scenario_name), None)
     if scenario is None:
         return []
@@ -128,8 +218,55 @@ def _stage_input_rows(project: Project, scenario_name: str) -> list[dict[str, An
             getattr(stage, "eurovent_curve", []),
             ensure_ascii=False,
         )
+        if calculation_method == "Filter life-based":
+            row = {
+                column: row.get(column, "")
+                for column in FILTER_LIFE_STAGE_INPUT_COLUMNS
+            }
         rows.append(row)
     return rows
+
+
+def _formula_reference_rows(calculation_method: str) -> list[dict[str, str]]:
+    if calculation_method == "Filter life-based":
+        return [
+            row
+            for row in FORMULA_REFERENCE
+            if row["Formula name"] not in FILTER_LIFE_HIDDEN_FORMULAS
+        ]
+    return FORMULA_REFERENCE
+
+
+def _assumption_rows(project: Project) -> list[dict[str, Any]]:
+    calculation_method = project.assumptions.calculation_method
+    rows = []
+    for key, value in vars(project.assumptions).items():
+        if (
+            calculation_method == "Filter life-based"
+            and key in FILTER_LIFE_HIDDEN_ASSUMPTIONS
+        ):
+            continue
+        rows.append({"Parameter": key, "Value": value})
+    return rows
+
+
+def _stage_result_dataframe(
+    stages_df: pd.DataFrame,
+    calculation_method: str,
+) -> pd.DataFrame:
+    if calculation_method == "Filter life-based":
+        return stages_df.reindex(columns=FILTER_LIFE_STAGE_RESULT_COLUMNS)
+    return stages_df
+
+
+def _filter_database_dataframe(project: Project) -> pd.DataFrame:
+    records_df = pd.DataFrame([vars(record) for record in project.filter_database])
+    if project.assumptions.calculation_method != "Filter life-based":
+        return records_df
+    return records_df.reindex(
+        columns=list(FILTER_DATABASE_DISPLAY_COLUMNS.keys()),
+        fill_value="",
+    ).rename(columns=FILTER_DATABASE_DISPLAY_COLUMNS)
 
 
 def _write_chart_data(worksheet: Any, summaries_df: pd.DataFrame, stages_df: pd.DataFrame) -> None:
@@ -270,17 +407,14 @@ def _add_charts(workbook: Any, summaries_df: pd.DataFrame, stages_df: pd.DataFra
 
 def build_excel_report(project: Project) -> bytes:
     comparison = compare_scenarios(project.scenarios, project.assumptions)
+    calculation_method = project.assumptions.calculation_method
     summaries_df = pd.DataFrame(comparison["summaries"])
     stages_df = pd.DataFrame(comparison["stages"])
-    assumptions_df = pd.DataFrame(
-        [
-            {"Parameter": key, "Value": value}
-            for key, value in vars(project.assumptions).items()
-        ]
-    )
-    filter_database_df = pd.DataFrame([vars(record) for record in project.filter_database])
+    assumptions_df = pd.DataFrame(_assumption_rows(project))
+    filter_database_df = _filter_database_dataframe(project)
     summary_df = pd.DataFrame(_project_summary_rows(project, comparison))
-    formulas_df = pd.DataFrame(FORMULA_REFERENCE)
+    formulas_df = pd.DataFrame(_formula_reference_rows(calculation_method))
+    stage_result_df = _stage_result_dataframe(stages_df, calculation_method)
 
     output = BytesIO()
     with pd.ExcelWriter(output, engine="openpyxl") as writer:
@@ -289,11 +423,13 @@ def build_excel_report(project: Project) -> bytes:
         filter_database_df.to_excel(writer, index=False, sheet_name="Filter_Database")
         for scenario in project.scenarios:
             sheet = _sheet_name(scenario.name)
-            pd.DataFrame(_stage_input_rows(project, scenario.name)).to_excel(
+            pd.DataFrame(
+                _stage_input_rows(project, scenario.name, calculation_method)
+            ).to_excel(
                 writer, index=False, sheet_name=sheet
             )
         summaries_df.to_excel(writer, index=False, sheet_name="Scenario_Comparison")
-        stages_df.to_excel(writer, index=False, sheet_name="Stage_Result")
+        stage_result_df.to_excel(writer, index=False, sheet_name="Stage_Result")
         formulas_df.to_excel(writer, index=False, sheet_name="Formula_Reference")
 
         workbook = writer.book

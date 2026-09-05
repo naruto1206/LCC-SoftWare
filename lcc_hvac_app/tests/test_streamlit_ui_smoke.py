@@ -125,3 +125,19 @@ def test_filter_life_entry_file_locks_calculation_method():
         app_test.session_state["project"].assumptions.calculation_method
         == "Filter life-based"
     )
+
+
+def test_filter_life_setup_hides_dust_environment_controls():
+    app_test = AppTest.from_file("streamlit_filter_life_app.py")
+    app_test.session_state["active_page"] = "setup"
+    app_test.run(timeout=20)
+
+    assert not app_test.exception
+    number_labels = [number_input.label for number_input in app_test.number_input]
+    select_labels = [selectbox.label for selectbox in app_test.selectbox]
+    checkbox_labels = [checkbox.label for checkbox in app_test.checkbox]
+
+    assert "Outdoor Environment" not in select_labels
+    assert "Advanced dust override" not in checkbox_labels
+    assert "Dust concentration (mg/m3)" not in number_labels
+    assert "Environment factor" not in number_labels

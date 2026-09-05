@@ -830,13 +830,26 @@ def render_analysis_section(project: Project, comparison: dict[str, object]) -> 
     )
     with dashboard_tab:
         st.markdown('<div class="section-label">Executive View</div>', unsafe_allow_html=True)
-        render_dashboard(comparison, project.project_info.currency, LOGO_PATH)
+        render_dashboard(
+            comparison,
+            project.project_info.currency,
+            LOGO_PATH,
+            project.assumptions.calculation_method,
+        )
     with tco_tab:
         st.markdown('<div class="section-label">Calculation Model</div>', unsafe_allow_html=True)
-        render_tco_model(comparison, project.project_info.currency)
+        render_tco_model(
+            comparison,
+            project.project_info.currency,
+            project.assumptions.calculation_method,
+        )
     with results_tab:
         st.markdown('<div class="section-label">Audit Tables</div>', unsafe_allow_html=True)
-        render_results(comparison, project.project_info.currency)
+        render_results(
+            comparison,
+            project.project_info.currency,
+            project.assumptions.calculation_method,
+        )
 
 
 def render_export(project: Project, comparison: dict[str, object]) -> None:

@@ -44,40 +44,48 @@ def render_assumptions(
         ahu = st.number_input("Number of AHU", min_value=1, value=int(assumptions.number_of_ahu), step=1)
         hours = st.number_input("Operating hours/day", min_value=0.0, max_value=24.0, value=float(assumptions.operating_hours_day), step=1.0)
         days = st.number_input("Operating days/year", min_value=0.0, max_value=365.0, value=float(assumptions.operating_days_year), step=1.0)
+    is_filter_life = calculation_method == "Filter life-based"
     with cost_col:
-        st.markdown("**Energy and Air Quality**")
+        st.markdown("**Energy**" if is_filter_life else "**Energy and Air Quality**")
         fan_eff = st.number_input("Fan total efficiency", min_value=0.01, max_value=1.0, value=float(assumptions.fan_efficiency), step=0.01)
         electricity = st.number_input("Electricity price (VND/kWh)", min_value=0.0, value=float(assumptions.electricity_price_vnd_kwh), step=100.0)
-        outdoor_environment = st.selectbox(
-            "Outdoor Environment",
-            environment_options,
-            index=environment_index,
-            help="This selection auto-fills dust concentration, environment factor, and the mass-efficiency estimation profile.",
-        )
-        profile = environment_profile(outdoor_environment)
-        advanced_override = st.checkbox(
-            "Advanced dust override",
-            value=bool(getattr(assumptions, "advanced_dust_override", False)),
-            help="Enable only when you have measured site dust data or a project-specific correction factor.",
-        )
-        if advanced_override:
-            dust = st.number_input(
-                "Dust concentration (mg/m3)",
-                min_value=0.0,
-                value=float(assumptions.dust_concentration_mg_m3),
-                step=0.1,
-            )
-            env = st.number_input(
-                "Environment factor",
-                min_value=0.0,
-                value=float(assumptions.environment_factor),
-                step=0.1,
-            )
-        else:
+        if is_filter_life:
+            outdoor_environment = getattr(assumptions, "outdoor_environment", "Country town")
+            advanced_override = False
+            profile = environment_profile(outdoor_environment)
             dust = profile.dust_concentration_mg_m3
             env = profile.environment_factor
-            st.metric("Dust concentration", f"{dust:,.2f} mg/m3")
-            st.metric("Environment factor", f"{env:,.2f}")
+        else:
+            outdoor_environment = st.selectbox(
+                "Outdoor Environment",
+                environment_options,
+                index=environment_index,
+                help="This selection auto-fills dust concentration, environment factor, and the mass-efficiency estimation profile.",
+            )
+            profile = environment_profile(outdoor_environment)
+            advanced_override = st.checkbox(
+                "Advanced dust override",
+                value=bool(getattr(assumptions, "advanced_dust_override", False)),
+                help="Enable only when you have measured site dust data or a project-specific correction factor.",
+            )
+            if advanced_override:
+                dust = st.number_input(
+                    "Dust concentration (mg/m3)",
+                    min_value=0.0,
+                    value=float(assumptions.dust_concentration_mg_m3),
+                    step=0.1,
+                )
+                env = st.number_input(
+                    "Environment factor",
+                    min_value=0.0,
+                    value=float(assumptions.environment_factor),
+                    step=0.1,
+                )
+            else:
+                dust = profile.dust_concentration_mg_m3
+                env = profile.environment_factor
+                st.metric("Dust concentration", f"{dust:,.2f} mg/m3")
+                st.metric("Environment factor", f"{env:,.2f}")
     with service_col:
         st.markdown("**Service Costs**")
         labor = st.number_input("Labor cost/filter/change", min_value=0.0, value=float(assumptions.labor_cost_vnd_filter_change), step=10000.0)

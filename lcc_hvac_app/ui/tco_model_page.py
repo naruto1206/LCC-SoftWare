@@ -37,6 +37,58 @@ MODEL_COLUMNS = [
     "TCO/year",
 ]
 
+FILTER_LIFE_MODEL_COLUMNS = [
+    "Scenario",
+    "Filter Stage",
+    "Qty/AHU",
+    "Rated Airflow/filter (m3/h)",
+    "Project Airflow/filter (m3/h)",
+    "Airflow Loading %",
+    "Target Filter Life (days)",
+    "Filter Life Source",
+    "Width (mm)",
+    "Height (mm)",
+    "Face Area (m2)",
+    "Media Area (m2)",
+    "Face Velocity (m/s)",
+    "Media Velocity (m/s)",
+    "Avg DP (Pa)",
+    "Filter Life (days)",
+    "Replacement/year",
+    "Filter Cost/year",
+    "Energy kWh/year",
+    "Energy Cost/year",
+    "Labor + Disposal/year",
+    "CO2 kg/year",
+    "TCO/year",
+]
+
+FILTER_LIFE_RAW_COLUMNS = [
+    "scenario",
+    "stage",
+    "qty_per_ahu",
+    "rated_airflow_m3_h_filter",
+    "airflow_per_filter_m3_h",
+    "airflow_loading_percent",
+    "target_filter_life_days",
+    "filter_life_source",
+    "width_mm",
+    "height_mm",
+    "face_area_m2",
+    "media_area_m2",
+    "face_velocity_m_s",
+    "media_velocity_m_s",
+    "avg_dp_pa",
+    "life_days",
+    "replacement_year",
+    "filter_cost_year",
+    "energy_kwh_year",
+    "energy_cost_year",
+    "labor_disposal_cost_year",
+    "co2_kg_year",
+    "tco_year",
+]
+
 
 def _stage_model_rows(stages: list[dict[str, object]], currency: str) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
@@ -139,7 +191,11 @@ def _render_summary_metrics(summary: dict[str, object], currency: str) -> None:
         st.metric("TCO/year", money(float(summary["tco_year"]), currency))
 
 
-def render_tco_model(comparison: dict[str, object], currency: str) -> None:
+def render_tco_model(
+    comparison: dict[str, object],
+    currency: str,
+    calculation_method: str = "DHC-based",
+) -> None:
     st.caption(
         "Stage-by-stage model for filter cost, energy cost, labor + disposal cost, "
         "replacement frequency, CO2, and total cost of ownership."
@@ -151,11 +207,21 @@ def render_tco_model(comparison: dict[str, object], currency: str) -> None:
         st.info("No TCO model is available yet. Please check assumptions and scenario inputs.")
         return
 
-    render_formula_reference()
+    render_formula_reference(calculation_method=calculation_method)
 
     stage_rows = _stage_model_rows(stages, currency)
-    model_df = pd.DataFrame(stage_rows, columns=MODEL_COLUMNS)
     raw_df = _raw_stage_dataframe(stages)
+    model_columns = (
+        FILTER_LIFE_MODEL_COLUMNS
+        if calculation_method == "Filter life-based"
+        else MODEL_COLUMNS
+    )
+    raw_columns = (
+        FILTER_LIFE_RAW_COLUMNS
+        if calculation_method == "Filter life-based"
+        else list(raw_df.columns)
+    )
+    model_df = pd.DataFrame(stage_rows, columns=MODEL_COLUMNS).reindex(columns=model_columns)
 
     scenario_names = [str(summary["scenario"]) for summary in summaries]
     selected_scenarios = st.multiselect(
@@ -174,6 +240,7 @@ def render_tco_model(comparison: dict[str, object], currency: str) -> None:
     st.download_button(
         "Download TCO model CSV",
         data=raw_df[raw_df["scenario"].isin(selected_scenarios)]
+        .reindex(columns=raw_columns)
         .to_csv(index=False)
         .encode("utf-8-sig"),
         file_name="tco_model_stage_breakdown.csv",

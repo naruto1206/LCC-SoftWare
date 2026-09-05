@@ -43,7 +43,10 @@ def apply_bar_value_style(fig: object) -> None:
 
 
 def render_dashboard(
-    comparison: dict[str, object], currency: str, logo_path: Path | None = None
+    comparison: dict[str, object],
+    currency: str,
+    logo_path: Path | None = None,
+    calculation_method: str = "DHC-based",
 ) -> None:
     summaries = pd.DataFrame(comparison["summaries"])
     stages = pd.DataFrame(comparison["stages"])
@@ -55,7 +58,7 @@ def render_dashboard(
     base = summaries.iloc[0]
     best = summaries[summaries["scenario"] == best_name].iloc[0]
 
-    render_formula_reference()
+    render_formula_reference(calculation_method=calculation_method)
 
     st.markdown('<div class="section-title">Executive Summary</div>', unsafe_allow_html=True)
     kpi1, kpi2, kpi3, kpi4 = st.columns(4)

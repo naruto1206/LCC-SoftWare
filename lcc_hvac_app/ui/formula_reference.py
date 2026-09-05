@@ -94,6 +94,13 @@ FORMULA_REFERENCE = [
 
 
 FORMULA_BY_RESULT = {row["Result"]: row["Formula"] for row in FORMULA_REFERENCE}
+FILTER_LIFE_HIDDEN_RESULTS = {
+    "Dust entering",
+    "Dust captured",
+    "Estimated Mass Efficiency",
+    "Dust to next stage",
+    "Eurovent Avg DP",
+}
 
 
 def formula_text(result_name: str) -> str:
@@ -107,10 +114,23 @@ def render_formula_note(result_name: str) -> None:
     )
 
 
-def render_formula_reference(expanded: bool = False) -> None:
+def formula_reference_rows(calculation_method: str = "DHC-based") -> list[dict[str, str]]:
+    if calculation_method == "Filter life-based":
+        return [
+            row
+            for row in FORMULA_REFERENCE
+            if row["Result"] not in FILTER_LIFE_HIDDEN_RESULTS
+        ]
+    return FORMULA_REFERENCE
+
+
+def render_formula_reference(
+    expanded: bool = False,
+    calculation_method: str = "DHC-based",
+) -> None:
     with st.expander("Formula Reference", expanded=expanded):
         st.dataframe(
-            pd.DataFrame(FORMULA_REFERENCE),
+            pd.DataFrame(formula_reference_rows(calculation_method)),
             width="stretch",
             hide_index=True,
         )
