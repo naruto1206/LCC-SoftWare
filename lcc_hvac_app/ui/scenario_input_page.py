@@ -307,6 +307,7 @@ def render_scenario_editor(
     key_prefix: str | None = None,
     filter_database: list[FilterDatabaseRecord] | None = None,
     outdoor_environment: str = DEFAULT_OUTDOOR_ENVIRONMENT,
+    calculation_method: str = "DHC-based",
 ) -> Scenario:
     st.markdown("**Filter Stages**")
     st.caption("Choose filters from Filter Data. Scenario calculations use the saved database values.")
@@ -362,29 +363,36 @@ def render_scenario_editor(
                 else "-",
             )
 
-            value_cols = st.columns(7)
-            effective_efficiency, efficiency_source = effective_mass_efficiency(
-                selected_record.mass_efficiency,
-                getattr(selected_record, "epm1_percent", 0.0),
-                getattr(selected_record, "epm25_percent", 0.0),
-                getattr(selected_record, "epm10_percent", 0.0),
-                getattr(selected_record, "coarse_percent", 0.0),
-                outdoor_environment,
-                selected_record.filter_class,
-            )
-            value_cols[0].metric("Qty/AHU", f"{selected_record.qty_per_ahu:,.0f}")
-            value_cols[1].metric("DHC", f"{selected_record.dhc_g:,.0f} g")
-            value_cols[2].metric("Mass Eff.", _format_efficiency(effective_efficiency))
-            value_cols[3].metric("Avg DP", f"{selected_record.avg_dp_pa:,.0f} Pa")
-            value_cols[4].metric("Final DP", f"{selected_record.final_dp_pa:,.0f} Pa")
-            value_cols[5].metric("Price", f"{selected_record.price_vnd_filter:,.0f}")
-            value_cols[6].metric(
-                "Target life",
-                f"{selected_record.target_filter_life_days:,.0f} days"
-                if selected_record.target_filter_life_days
-                else "-",
-            )
-            st.caption(f"Mass efficiency source: {efficiency_source}")
+            if calculation_method == "Filter life-based":
+                value_cols = st.columns(5)
+                value_cols[0].metric("Qty/AHU", f"{selected_record.qty_per_ahu:,.0f}")
+                value_cols[1].metric(
+                    "Target life",
+                    f"{selected_record.target_filter_life_days:,.0f} days"
+                    if selected_record.target_filter_life_days
+                    else "-",
+                )
+                value_cols[2].metric("Avg DP", f"{selected_record.avg_dp_pa:,.0f} Pa")
+                value_cols[3].metric("Final DP", f"{selected_record.final_dp_pa:,.0f} Pa")
+                value_cols[4].metric("Price", f"{selected_record.price_vnd_filter:,.0f}")
+            else:
+                value_cols = st.columns(6)
+                effective_efficiency, efficiency_source = effective_mass_efficiency(
+                    selected_record.mass_efficiency,
+                    getattr(selected_record, "epm1_percent", 0.0),
+                    getattr(selected_record, "epm25_percent", 0.0),
+                    getattr(selected_record, "epm10_percent", 0.0),
+                    getattr(selected_record, "coarse_percent", 0.0),
+                    outdoor_environment,
+                    selected_record.filter_class,
+                )
+                value_cols[0].metric("Qty/AHU", f"{selected_record.qty_per_ahu:,.0f}")
+                value_cols[1].metric("DHC", f"{selected_record.dhc_g:,.0f} g")
+                value_cols[2].metric("Mass Eff.", _format_efficiency(effective_efficiency))
+                value_cols[3].metric("Avg DP", f"{selected_record.avg_dp_pa:,.0f} Pa")
+                value_cols[4].metric("Final DP", f"{selected_record.final_dp_pa:,.0f} Pa")
+                value_cols[5].metric("Price", f"{selected_record.price_vnd_filter:,.0f}")
+                st.caption(f"Mass efficiency source: {efficiency_source}")
 
             geometry_cols = st.columns(4)
             media_area = selected_record.media_area_m2 or _calculate_media_area_m2(

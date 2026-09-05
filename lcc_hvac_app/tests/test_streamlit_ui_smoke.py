@@ -67,6 +67,45 @@ render_scenario_editor(
     )
 
 
+def test_filter_life_scenario_editor_hides_dhc_only_metrics():
+    app_test = AppTest.from_string(
+        """
+from lcc_hvac_app.engine.models import FilterDatabaseRecord, FilterStage, Scenario
+from lcc_hvac_app.ui.scenario_input_page import render_scenario_editor
+
+scenario = Scenario("Option 1", [FilterStage("Fine-filter", filter_id="FL-001")])
+filter_database = [
+    FilterDatabaseRecord(
+        filter_id="FL-001",
+        stage="Fine-filter",
+        model="Life filter",
+        filter_class="E10",
+        qty_per_ahu=20,
+        target_filter_life_days=180,
+        dhc_g=600,
+        mass_efficiency=0.8,
+        avg_dp_pa=120,
+        final_dp_pa=250,
+        price_vnd_filter=500000,
+    )
+]
+render_scenario_editor(
+    scenario,
+    key_prefix="filter_life",
+    filter_database=filter_database,
+    calculation_method="Filter life-based",
+)
+"""
+    )
+    app_test.run(timeout=10)
+
+    assert not app_test.exception
+    metric_labels = [metric.label for metric in app_test.metric]
+    assert "Target life" in metric_labels
+    assert "DHC" not in metric_labels
+    assert "Mass Eff." not in metric_labels
+
+
 def test_dhc_entry_file_locks_calculation_method():
     app_test = AppTest.from_file("streamlit_dhc_app.py")
     app_test.session_state["active_page"] = "setup"

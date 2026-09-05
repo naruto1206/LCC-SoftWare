@@ -781,6 +781,7 @@ def render_scenario_page(project: Project, index: int) -> None:
         key_prefix=scenario_key,
         filter_database=project.filter_database,
         outdoor_environment=project.assumptions.outdoor_environment,
+        calculation_method=project.assumptions.calculation_method,
     )
 
 
