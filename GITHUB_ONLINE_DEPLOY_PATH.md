@@ -107,7 +107,45 @@ https://your-app-name.streamlit.app
 
 Send that link to users. They only need a browser.
 
-## 6. Update The App Later
+## 6. Create Two Separate Online Apps
+
+If you want one link for the DHC-based app and one link for the Filter-life-based app, create two Streamlit Cloud apps from the same GitHub repository.
+
+### Link 1: DHC-Based App
+
+Create a Streamlit Cloud app with:
+
+```text
+Repository: naruto1206/LCC-SoftWare
+Branch: full-app
+Main file path: streamlit_dhc_app.py
+```
+
+Suggested app URL:
+
+```text
+lcc-dhc-based
+```
+
+### Link 2: Filter-Life-Based App
+
+Create another Streamlit Cloud app with:
+
+```text
+Repository: naruto1206/LCC-SoftWare
+Branch: full-app
+Main file path: streamlit_filter_life_app.py
+```
+
+Suggested app URL:
+
+```text
+lcc-filter-life-based
+```
+
+After this, Streamlit Cloud will give two different links. The second app will not appear automatically inside the first app. It must be created as a separate Streamlit Cloud app.
+
+## 7. Update The App Later
 
 To update the online app:
 
