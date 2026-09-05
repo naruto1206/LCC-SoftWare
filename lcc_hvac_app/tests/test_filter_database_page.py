@@ -222,6 +222,33 @@ def test_normalize_uploaded_database_calculates_avg_dp_when_blank():
     assert normalized.loc[0, "Avg DP (Pa)"] == 165
 
 
+def test_normalize_uploaded_database_treats_nan_numeric_cells_as_blank():
+    dataframe = pd.DataFrame(
+        [
+            {
+                "Filter ID": "FL-NAN",
+                "Stage": "Fine-filter",
+                "Qty/AHU": float("nan"),
+                "Target filter life (days)": float("nan"),
+                "Width (mm)": float("nan"),
+                "Height (mm)": 592,
+                "Initial DP (Pa)": float("nan"),
+                "Final DP (Pa)": 250,
+                "Price/filter (VND)": float("nan"),
+            }
+        ]
+    )
+
+    normalized = normalize_uploaded_database(dataframe)
+
+    assert normalized.loc[0, "Qty/AHU"] == 1
+    assert normalized.loc[0, "Target filter life (days)"] == 0
+    assert normalized.loc[0, "Width (mm)"] == 0
+    assert normalized.loc[0, "Media area/filter (m2)"] == 0
+    assert normalized.loc[0, "Avg DP (Pa)"] == 0
+    assert normalized.loc[0, "Price/filter (VND)"] == 0
+
+
 def test_normalize_uploaded_database_estimates_mass_efficiency_from_epm():
     dataframe = pd.DataFrame(
         [

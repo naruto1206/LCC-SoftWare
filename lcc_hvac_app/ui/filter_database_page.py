@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import math
 from io import BytesIO
 from typing import Any
 
@@ -912,10 +913,13 @@ def dataframe_to_records(dataframe: pd.DataFrame) -> list[FilterDatabaseRecord]:
 def _to_float(value: Any) -> float:
     if value is None or value == "":
         return 0.0
+    if pd.isna(value):
+        return 0.0
     try:
-        return float(str(value).replace(",", "").replace("%", "").strip())
+        number = float(str(value).replace(",", "").replace("%", "").strip())
     except ValueError:
         return 0.0
+    return number if math.isfinite(number) else 0.0
 
 
 def _normalize_column_name(name: object) -> str:
@@ -975,7 +979,7 @@ def normalize_uploaded_database(dataframe: pd.DataFrame) -> pd.DataFrame:
             normalized["height_mm"] = sizes["height"]
 
     if "qty_per_ahu" in normalized.columns:
-        blank_qty = normalized["qty_per_ahu"].astype(str).str.strip() == ""
+        blank_qty = normalized["qty_per_ahu"].apply(_to_float) <= 0
         normalized.loc[blank_qty, "qty_per_ahu"] = 1
 
     for number_column in [
