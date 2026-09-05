@@ -6,6 +6,7 @@ from openpyxl import load_workbook
 from lcc_hvac_app.ui.filter_database_page import (
     dataframe_to_excel_bytes,
     filter_record_ids,
+    _missing_filter_record_fields,
     normalize_uploaded_database,
     recalculate_media_area_dataframe,
     remove_filter_database_rows,
@@ -230,3 +231,46 @@ def test_normalize_uploaded_database_detects_workbook_header_row():
     assert normalized.loc[0, "Stage"] == "Pre-filter"
     assert normalized.loc[0, "Qty/AHU"] == 20
     assert normalized.loc[0, "DHC/filter direct (g)"] == 600
+
+
+def test_filter_life_based_required_fields_do_not_require_dhc_or_efficiency(monkeypatch):
+    monkeypatch.setattr(
+        "lcc_hvac_app.ui.filter_database_page.current_calculation_method",
+        lambda: "Filter life-based",
+    )
+    row = {
+        "Filter ID": "FL-001",
+        "Supplier": "Air Filtech",
+        "Stage": "Fine-filter",
+        "Filter model / description": "Life filter",
+        "Filter Class": "E10",
+        "Qty/AHU": 20,
+        "Target filter life (days)": 180,
+        "Avg DP (Pa)": 120,
+        "Price/filter (VND)": 500000,
+    }
+
+    assert _missing_filter_record_fields(row) == []
+
+
+def test_dhc_based_required_fields_require_dhc_and_efficiency(monkeypatch):
+    monkeypatch.setattr(
+        "lcc_hvac_app.ui.filter_database_page.current_calculation_method",
+        lambda: "DHC-based",
+    )
+    row = {
+        "Filter ID": "DHC-001",
+        "Supplier": "Air Filtech",
+        "Stage": "Fine-filter",
+        "Filter model / description": "DHC filter",
+        "Filter Class": "",
+        "Qty/AHU": 20,
+        "Target filter life (days)": 180,
+        "Avg DP (Pa)": 120,
+        "Price/filter (VND)": 500000,
+    }
+
+    missing = _missing_filter_record_fields(row)
+
+    assert "DHC/filter direct (g)" in missing
+    assert "Mass Eff. % or Filter Class/ePM/Coarse" in missing

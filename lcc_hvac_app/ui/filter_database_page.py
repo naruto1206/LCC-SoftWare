@@ -290,6 +290,12 @@ def current_outdoor_environment() -> str:
     return getattr(assumptions, "outdoor_environment", DEFAULT_OUTDOOR_ENVIRONMENT)
 
 
+def current_calculation_method() -> str:
+    project = st.session_state.get("project")
+    assumptions = getattr(project, "assumptions", None)
+    return getattr(assumptions, "calculation_method", "DHC-based")
+
+
 def calculate_effective_mass_efficiency_for_row(row: pd.Series | dict[str, Any]) -> tuple[float, str]:
     source = str(row.get("Mass Eff. Source", "") or "")
     direct = 0.0 if source.startswith("Estimated") else row.get("Mass Eff. %", 0.0)
@@ -498,12 +504,6 @@ def _missing_filter_record_fields(row: dict[str, Any]) -> list[str]:
     ]
     required_positive_fields = [
         "Qty/AHU",
-        "Width (mm)",
-        "Height (mm)",
-        "Rated airflow/filter (m3/h)",
-        "Initial DP (Pa)",
-        "Avg DP (Pa)",
-        "Final DP (Pa)",
         "Price/filter (VND)",
     ]
 
@@ -515,15 +515,21 @@ def _missing_filter_record_fields(row: dict[str, Any]) -> list[str]:
         if _to_float(row.get(field_name, 0)) <= 0:
             missing.append(field_name)
 
-    if (
-        _to_float(row.get("DHC/filter direct (g)", 0)) <= 0
-        and _to_float(row.get("Target filter life (days)", 0)) <= 0
-    ):
-        missing.append("DHC/filter direct (g) or Target filter life (days)")
+    avg_dp = _to_float(row.get("Avg DP (Pa)", 0))
+    initial_dp = _to_float(row.get("Initial DP (Pa)", 0))
+    final_dp = _to_float(row.get("Final DP (Pa)", 0))
+    if avg_dp <= 0 and (initial_dp <= 0 or final_dp <= 0):
+        missing.append("Avg DP (Pa) or Initial DP + Final DP")
 
-    mass_efficiency, _source = calculate_effective_mass_efficiency_for_row(row)
-    if mass_efficiency <= 0:
-        missing.append("Mass Eff. % or ePM/Coarse")
+    if current_calculation_method() == "Filter life-based":
+        if _to_float(row.get("Target filter life (days)", 0)) <= 0:
+            missing.append("Target filter life (days)")
+    else:
+        if _to_float(row.get("DHC/filter direct (g)", 0)) <= 0:
+            missing.append("DHC/filter direct (g)")
+        mass_efficiency, _source = calculate_effective_mass_efficiency_for_row(row)
+        if mass_efficiency <= 0:
+            missing.append("Mass Eff. % or Filter Class/ePM/Coarse")
 
     return missing
 
