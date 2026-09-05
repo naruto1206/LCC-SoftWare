@@ -158,6 +158,14 @@ def empty_display_row() -> dict[str, Any]:
     }
 
 
+def calculate_media_area_m2(width_mm: Any, height_mm: Any) -> float:
+    width = _to_float(width_mm)
+    height = _to_float(height_mm)
+    if width <= 0 or height <= 0:
+        return 0.0
+    return round(width * height / 1_000_000, 4)
+
+
 def normalize_display_dataframe(dataframe: pd.DataFrame | None) -> pd.DataFrame:
     if dataframe is None:
         return pd.DataFrame(columns=list(DISPLAY_COLUMNS.values()))
@@ -183,7 +191,28 @@ def normalize_display_dataframe(dataframe: pd.DataFrame | None) -> pd.DataFrame:
         normalized = normalized.rename(columns={"DHC (g)": "DHC/filter direct (g)"})
     if "Area (m2)" in normalized.columns and "Media area/filter (m2)" not in normalized.columns:
         normalized = normalized.rename(columns={"Area (m2)": "Media area/filter (m2)"})
-    return normalized.reindex(columns=list(DISPLAY_COLUMNS.values()), fill_value="")
+    normalized = normalized.reindex(columns=list(DISPLAY_COLUMNS.values()), fill_value="")
+    if {"Width (mm)", "Height (mm)", "Media area/filter (m2)"}.issubset(normalized.columns):
+        calculated_area = normalized.apply(
+            lambda row: calculate_media_area_m2(row["Width (mm)"], row["Height (mm)"]),
+            axis=1,
+        )
+        current_area = normalized["Media area/filter (m2)"].apply(_to_float)
+        normalized["Media area/filter (m2)"] = [
+            calculated if calculated > 0 and existing <= 0 else existing
+            for calculated, existing in zip(calculated_area, current_area, strict=False)
+        ]
+    return normalized
+
+
+def recalculate_media_area_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
+    normalized = normalize_display_dataframe(dataframe)
+    if {"Width (mm)", "Height (mm)", "Media area/filter (m2)"}.issubset(normalized.columns):
+        normalized["Media area/filter (m2)"] = normalized.apply(
+            lambda row: calculate_media_area_m2(row["Width (mm)"], row["Height (mm)"]),
+            axis=1,
+        )
+    return normalized
 
 
 def sync_filter_database_editor(editor_key: str) -> None:
@@ -215,7 +244,7 @@ def sync_filter_database_editor(editor_key: str) -> None:
         if index < len(current):
             current = current.drop(current.index[index])
 
-    st.session_state.filter_database_data = normalize_display_dataframe(
+    st.session_state.filter_database_data = recalculate_media_area_dataframe(
         current.reset_index(drop=True)
     )
 
@@ -252,7 +281,7 @@ def _row_value(row: pd.Series | None, column: str, default: Any = "") -> Any:
 
 
 def persist_filter_database_dataframe(dataframe: pd.DataFrame) -> None:
-    st.session_state.filter_database_data = normalize_display_dataframe(dataframe)
+    st.session_state.filter_database_data = recalculate_media_area_dataframe(dataframe)
     st.session_state.filter_database_session_only = True
 
 
@@ -381,12 +410,14 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             step=1.0,
             key=f"height_mm_{form_key}",
         )
-        media_area = col9.number_input(
+        media_area = calculate_media_area_m2(width_mm, height_mm)
+        col9.number_input(
             "Media area/filter (m2)",
             min_value=0.0,
-            value=float(_row_value(selected_row, "Media area/filter (m2)", 0.0)),
-            step=0.1,
-            key=f"media_area_{form_key}",
+            value=media_area,
+            step=0.01,
+            disabled=True,
+            help="Automatically calculated from Width x Height / 1,000,000.",
         )
 
         col10, col11, col12 = st.columns(3)
@@ -739,6 +770,16 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
         validation.promptTitle = "Filter stage"
         worksheet.add_data_validation(validation)
         validation.add(f"{stage_letter}2:{stage_letter}{max_row}")
+
+    if all(header in headers for header in ["Width (mm)", "Height (mm)", "Media area/filter (m2)"]):
+        width_letter = get_column_letter(headers.index("Width (mm)") + 1)
+        height_letter = get_column_letter(headers.index("Height (mm)") + 1)
+        media_area_letter = get_column_letter(headers.index("Media area/filter (m2)") + 1)
+        for row in range(2, max_row + 1):
+            worksheet[f"{media_area_letter}{row}"] = (
+                f"=IF(AND({width_letter}{row}>0,{height_letter}{row}>0),"
+                f"ROUND({width_letter}{row}*{height_letter}{row}/1000000,4),0)"
+            )
 
     required_headers = ["Filter ID", "Supplier", "Stage", "Filter model / description", "ISO Class"]
     for required_header in required_headers:

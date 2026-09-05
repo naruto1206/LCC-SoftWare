@@ -7,6 +7,7 @@ from lcc_hvac_app.ui.filter_database_page import (
     dataframe_to_excel_bytes,
     filter_record_ids,
     normalize_uploaded_database,
+    recalculate_media_area_dataframe,
     remove_filter_database_rows,
 )
 
@@ -62,6 +63,24 @@ def test_dataframe_to_excel_bytes_exports_filter_database_sheet():
     assert worksheet["A2"].fill.fgColor.rgb == "00DCFCE7"
     assert worksheet.freeze_panes == "A2"
     assert len(worksheet.data_validations.dataValidation) >= 1
+    assert worksheet["I2"].value == "=IF(AND(G2>0,H2>0),ROUND(G2*H2/1000000,4),0)"
+
+
+def test_recalculate_media_area_dataframe_uses_width_and_height():
+    dataframe = pd.DataFrame(
+        [
+            {
+                "Filter ID": "PF-001",
+                "Width (mm)": 592,
+                "Height (mm)": 592,
+                "Media area/filter (m2)": 0,
+            }
+        ]
+    )
+
+    normalized = recalculate_media_area_dataframe(dataframe)
+
+    assert normalized.loc[0, "Media area/filter (m2)"] == 0.3505
 
 
 def test_normalize_uploaded_database_imports_qty_per_ahu():
