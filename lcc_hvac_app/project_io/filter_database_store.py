@@ -23,7 +23,12 @@ FILTER_DATABASE_FIELDS = [
     "initial_dp_pa",
     "avg_dp_pa",
     "final_dp_pa",
+    "epm1_percent",
+    "epm25_percent",
+    "epm10_percent",
+    "coarse_percent",
     "mass_efficiency",
+    "mass_efficiency_source",
     "price_vnd_filter",
     "notes",
 ]
@@ -41,6 +46,10 @@ NUMBER_FIELDS = {
     "initial_dp_pa",
     "avg_dp_pa",
     "final_dp_pa",
+    "epm1_percent",
+    "epm25_percent",
+    "epm10_percent",
+    "coarse_percent",
     "mass_efficiency",
     "price_vnd_filter",
 }

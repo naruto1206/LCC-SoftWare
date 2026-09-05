@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass, field
 from typing import Any
 
+from lcc_hvac_app.engine.efficiency import DEFAULT_OUTDOOR_ENVIRONMENT
+
 
 @dataclass
 class ProjectInfo:
@@ -22,7 +24,9 @@ class Assumptions:
     operating_days_year: float = 365.0
     fan_efficiency: float = 0.6
     electricity_price_vnd_kwh: float = 2500.0
-    dust_concentration_mg_m3: float = 0.3
+    outdoor_environment: str = DEFAULT_OUTDOOR_ENVIRONMENT
+    advanced_dust_override: bool = False
+    dust_concentration_mg_m3: float = 0.1
     environment_factor: float = 1.0
     labor_cost_vnd_filter_change: float = 50000.0
     disposal_cost_vnd_filter_change: float = 20000.0
@@ -70,7 +74,12 @@ class FilterDatabaseRecord:
     initial_dp_pa: float = 0.0
     avg_dp_pa: float = 0.0
     final_dp_pa: float = 0.0
+    epm1_percent: float = 0.0
+    epm25_percent: float = 0.0
+    epm10_percent: float = 0.0
+    coarse_percent: float = 0.0
     mass_efficiency: float = 0.0
+    mass_efficiency_source: str = ""
     price_vnd_filter: float = 0.0
     notes: str = ""
 

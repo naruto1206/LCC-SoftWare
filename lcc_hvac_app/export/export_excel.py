@@ -25,6 +25,11 @@ FORMULA_REFERENCE = [
         "Unit": "g/day/filter",
     },
     {
+        "Formula name": "Estimated Mass Efficiency",
+        "Formula": "PM1 fraction x ePM1 + PM1-2.5 fraction x ePM2.5 + PM2.5-10 fraction x ePM10 + Coarse fraction x ISO Coarse",
+        "Unit": "%",
+    },
+    {
         "Formula name": "Face area",
         "Formula": "Width x Height / 1,000,000",
         "Unit": "m2/filter",
@@ -89,6 +94,10 @@ def _project_summary_rows(project: Project, comparison: dict[str, Any]) -> list[
         {"Item": "Currency", "Value": info.currency},
         {"Item": "Airflow per AHU", "Value": assumptions.airflow_m3_h_per_ahu},
         {"Item": "Number of AHU", "Value": assumptions.number_of_ahu},
+        {"Item": "Outdoor Environment", "Value": assumptions.outdoor_environment},
+        {"Item": "Advanced dust override", "Value": assumptions.advanced_dust_override},
+        {"Item": "Dust concentration (mg/m3)", "Value": assumptions.dust_concentration_mg_m3},
+        {"Item": "Environment factor", "Value": assumptions.environment_factor},
         {"Item": "Best option", "Value": best_name},
         {"Item": "Base TCO/year", "Value": base.get("tco_year", 0)},
         {"Item": "Best TCO/year", "Value": best.get("tco_year", 0)},

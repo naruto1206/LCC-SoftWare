@@ -64,6 +64,8 @@ def test_dataframe_to_excel_bytes_exports_filter_database_sheet():
     assert worksheet.freeze_panes == "A2"
     assert len(worksheet.data_validations.dataValidation) >= 1
     assert worksheet["I2"].value == "=IF(AND(G2>0,H2>0),ROUND(G2*H2/1000000,4),0)"
+    assert "ePM1 %" in [cell.value for cell in worksheet[1]]
+    assert "Mass Eff. Source" in [cell.value for cell in worksheet[1]]
 
 
 def test_recalculate_media_area_dataframe_uses_width_and_height():
@@ -95,7 +97,7 @@ def test_normalize_uploaded_database_imports_qty_per_ahu():
                 "DHC to final DP (g)": 600,
                 "Area (m2)": 1.2,
                 "Eurovent Avg DP (Pa)": 85,
-                "Mass Efficiency %": 0.7,
+                "Mass Efficiency %": 70,
                 "Price/filter (VND)": 250000,
             }
         ]
@@ -109,10 +111,28 @@ def test_normalize_uploaded_database_imports_qty_per_ahu():
     assert normalized.loc[0, "Width (mm)"] == 592
     assert normalized.loc[0, "Height (mm)"] == 287
     assert normalized.loc[0, "DHC/filter direct (g)"] == 600
-    assert normalized.loc[0, "Media area/filter (m2)"] == 1.2
+    assert normalized.loc[0, "Media area/filter (m2)"] == 0.1699
     assert normalized.loc[0, "Avg DP (Pa)"] == 85
-    assert normalized.loc[0, "Mass Eff. %"] == 0.7
+    assert normalized.loc[0, "Mass Eff. %"] == 70
     assert normalized.loc[0, "Price/filter (VND)"] == 250000
+
+
+def test_normalize_uploaded_database_estimates_mass_efficiency_from_epm():
+    dataframe = pd.DataFrame(
+        [
+            {
+                "Filter ID": "FF-A",
+                "Stage": "Fine-filter",
+                "ePM10 %": 60,
+                "ISO Coarse %": 90,
+            }
+        ]
+    )
+
+    normalized = normalize_uploaded_database(dataframe)
+
+    assert normalized.loc[0, "Mass Eff. %"] == 70.5
+    assert normalized.loc[0, "Mass Eff. Source"] == "Estimated from ePM/Coarse"
 
 
 def test_normalize_uploaded_database_detects_workbook_header_row():

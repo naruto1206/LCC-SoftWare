@@ -18,6 +18,11 @@ from lcc_hvac_app.engine.models import (
     Scenario,
     default_project,
 )
+from lcc_hvac_app.engine.efficiency import (
+    DEFAULT_OUTDOOR_ENVIRONMENT,
+    effective_mass_efficiency,
+    environment_profile,
+)
 from lcc_hvac_app.engine.scenario import compare_scenarios
 from lcc_hvac_app.engine.validation import validate_project
 from lcc_hvac_app.export.export_excel import build_excel_report
@@ -415,6 +420,14 @@ def get_project() -> Project:
 
 
 def ensure_project_schema(project: Project) -> None:
+    if not hasattr(project.assumptions, "outdoor_environment"):
+        project.assumptions.outdoor_environment = DEFAULT_OUTDOOR_ENVIRONMENT
+    if not hasattr(project.assumptions, "advanced_dust_override"):
+        project.assumptions.advanced_dust_override = False
+    if not project.assumptions.advanced_dust_override:
+        profile = environment_profile(project.assumptions.outdoor_environment)
+        project.assumptions.dust_concentration_mg_m3 = profile.dust_concentration_mg_m3
+        project.assumptions.environment_factor = profile.environment_factor
     for scenario in project.scenarios:
         for stage in scenario.stages:
             if not hasattr(stage, "filter_id"):
@@ -433,12 +446,23 @@ def ensure_project_schema(project: Project) -> None:
                 stage.eurovent_curve = []
 
 
-def stage_from_filter_record(record: FilterDatabaseRecord) -> FilterStage:
+def stage_from_filter_record(
+    record: FilterDatabaseRecord,
+    outdoor_environment: str = DEFAULT_OUTDOOR_ENVIRONMENT,
+) -> FilterStage:
+    mass_efficiency, _source = effective_mass_efficiency(
+        record.mass_efficiency,
+        getattr(record, "epm1_percent", 0.0),
+        getattr(record, "epm25_percent", 0.0),
+        getattr(record, "epm10_percent", 0.0),
+        getattr(record, "coarse_percent", 0.0),
+        outdoor_environment,
+    )
     return FilterStage(
         stage=record.stage,
         qty_per_ahu=record.qty_per_ahu,
         dhc_g=record.dhc_g,
-        mass_efficiency=record.mass_efficiency,
+        mass_efficiency=mass_efficiency,
         avg_dp_pa=record.avg_dp_pa,
         price_vnd_filter=record.price_vnd_filter,
         width_mm=record.width_mm,
@@ -450,6 +474,7 @@ def stage_from_filter_record(record: FilterDatabaseRecord) -> FilterStage:
 
 def default_scenarios_from_filter_database(
     filter_database: list[FilterDatabaseRecord],
+    outdoor_environment: str = DEFAULT_OUTDOOR_ENVIRONMENT,
 ) -> list[Scenario]:
     stage_order = ["Pre-filter", "Fine-filter", "EPA / Final-filter", "HEPA", "ULPA"]
     records_by_stage: dict[str, list[FilterDatabaseRecord]] = {}
@@ -466,7 +491,10 @@ def default_scenarios_from_filter_database(
         return []
 
     scenarios = [
-        Scenario("Base / Current", [stage_from_filter_record(record) for record in base_records])
+        Scenario(
+            "Base / Current",
+            [stage_from_filter_record(record, outdoor_environment) for record in base_records],
+        )
     ]
 
     option_records = []
@@ -479,7 +507,10 @@ def default_scenarios_from_filter_database(
         option_records.append(selected)
     if has_alternative:
         scenarios.append(
-            Scenario("Option 1", [stage_from_filter_record(record) for record in option_records])
+            Scenario(
+                "Option 1",
+                [stage_from_filter_record(record, outdoor_environment) for record in option_records],
+            )
         )
     return scenarios
 
@@ -489,7 +520,10 @@ def create_new_project() -> Project:
     saved_filter_database = load_filter_database()
     if saved_filter_database or DEFAULT_FILTER_DATABASE_PATH.exists():
         project.filter_database = saved_filter_database
-    database_scenarios = default_scenarios_from_filter_database(project.filter_database)
+    database_scenarios = default_scenarios_from_filter_database(
+        project.filter_database,
+        project.assumptions.outdoor_environment,
+    )
     if database_scenarios:
         project.scenarios = database_scenarios
     now = datetime.now()
@@ -725,6 +759,7 @@ def render_scenario_page(project: Project, index: int) -> None:
         project.scenarios[index],
         key_prefix=scenario_key,
         filter_database=project.filter_database,
+        outdoor_environment=project.assumptions.outdoor_environment,
     )
 
 

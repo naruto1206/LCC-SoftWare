@@ -1,5 +1,5 @@
-filter_id,supplier,stage,model,filter_class,qty_per_ahu,width_mm,height_mm,media_area_m2,dhc_g,initial_dp_pa,avg_dp_pa,final_dp_pa,mass_efficiency,price_vnd_filter,notes
-PF-A,Air Filtech,Pre-filter,Coarse Panel,ISO Coarse 70%,20,592,592,0.3505,600,45,85,200,0.7,250000,Copied from LCC-HVAC Filter System 2026-Rev-01.xlsx
-FF-A,Air Filtech,Fine-filter,Bag ePM10,ISO ePM10 60%,20,592,592,0.3505,400,65,95,300,0.6,850000,Copied from LCC-HVAC Filter System 2026-Rev-01.xlsx
-FF-B,Air Filtech,Fine-filter,Mini-pleat ePM1,ISO ePM1 70%,20,592,592,0.3505,350,80,110,300,0.75,1500000,Copied from LCC-HVAC Filter System 2026-Rev-01.xlsx
-HEPA-A,Air Filtech,HEPA,H13 HEPA,EN1822 H13,20,592,592,0.3505,500,120,180,600,0.95,2800000,Copied from LCC-HVAC Filter System 2026-Rev-01.xlsx
+filter_id,supplier,stage,model,filter_class,qty_per_ahu,width_mm,height_mm,media_area_m2,dhc_g,initial_dp_pa,avg_dp_pa,final_dp_pa,epm1_percent,epm25_percent,epm10_percent,coarse_percent,mass_efficiency,mass_efficiency_source,price_vnd_filter,notes
+PF-A,Air Filtech,Pre-filter,Coarse Panel,ISO Coarse 70%,20,592,592,0.3505,600,45,85,200,0,0,0,70,70,Direct,250000,Copied from LCC-HVAC Filter System 2026-Rev-01.xlsx
+FF-A,Air Filtech,Fine-filter,Bag ePM10,ISO ePM10 60%,20,592,592,0.3505,400,65,95,300,0,0,60,0,60,Direct,850000,Copied from LCC-HVAC Filter System 2026-Rev-01.xlsx
+FF-B,Air Filtech,Fine-filter,Mini-pleat ePM1,ISO ePM1 70%,20,592,592,0.3505,350,80,110,300,70,0,0,0,75,Direct,1500000,Copied from LCC-HVAC Filter System 2026-Rev-01.xlsx
+HEPA-A,Air Filtech,HEPA,H13 HEPA,EN1822 H13,20,592,592,0.3505,500,120,180,600,0,0,0,0,95,Direct,2800000,Copied from LCC-HVAC Filter System 2026-Rev-01.xlsx

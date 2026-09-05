@@ -10,6 +10,7 @@ from lcc_hvac_app.engine.eurovent import (
     calculate_eurovent_average_dp,
     default_mx_for_iso_group,
 )
+from lcc_hvac_app.engine.efficiency import DEFAULT_OUTDOOR_ENVIRONMENT, effective_mass_efficiency
 from lcc_hvac_app.engine.models import FilterDatabaseRecord, FilterStage, Scenario
 
 
@@ -159,12 +160,23 @@ def _apply_selected_filter_id_to_session(
         _apply_filter_record_to_session(record, scenario_name, row_index, key_prefix)
 
 
-def _record_to_stage(record: FilterDatabaseRecord) -> FilterStage:
+def _record_to_stage(
+    record: FilterDatabaseRecord,
+    outdoor_environment: str = DEFAULT_OUTDOOR_ENVIRONMENT,
+) -> FilterStage:
+    mass_efficiency, _source = effective_mass_efficiency(
+        record.mass_efficiency,
+        getattr(record, "epm1_percent", 0.0),
+        getattr(record, "epm25_percent", 0.0),
+        getattr(record, "epm10_percent", 0.0),
+        getattr(record, "coarse_percent", 0.0),
+        outdoor_environment,
+    )
     return FilterStage(
         stage=record.stage,
         qty_per_ahu=record.qty_per_ahu,
         dhc_g=record.dhc_g,
-        mass_efficiency=record.mass_efficiency,
+        mass_efficiency=mass_efficiency,
         avg_dp_pa=record.avg_dp_pa,
         price_vnd_filter=record.price_vnd_filter,
         width_mm=record.width_mm,
@@ -291,6 +303,7 @@ def render_scenario_editor(
     scenario: Scenario,
     key_prefix: str | None = None,
     filter_database: list[FilterDatabaseRecord] | None = None,
+    outdoor_environment: str = DEFAULT_OUTDOOR_ENVIRONMENT,
 ) -> Scenario:
     st.markdown("**Filter Stages**")
     st.caption("Choose filters from Filter Data. Scenario calculations use the saved database values.")
@@ -305,7 +318,9 @@ def render_scenario_editor(
         return Scenario(scenario.name, [])
 
     if st.button("Add Stage", key=add_key, width="stretch"):
-        stages.append(_record_to_stage(filter_lookup[next(iter(filter_lookup))]))
+        stages.append(
+            _record_to_stage(filter_lookup[next(iter(filter_lookup))], outdoor_environment)
+        )
 
     for index, stage in enumerate(stages):
         with st.container(border=True):
@@ -345,12 +360,21 @@ def render_scenario_editor(
             )
 
             value_cols = st.columns(6)
+            effective_efficiency, efficiency_source = effective_mass_efficiency(
+                selected_record.mass_efficiency,
+                getattr(selected_record, "epm1_percent", 0.0),
+                getattr(selected_record, "epm25_percent", 0.0),
+                getattr(selected_record, "epm10_percent", 0.0),
+                getattr(selected_record, "coarse_percent", 0.0),
+                outdoor_environment,
+            )
             value_cols[0].metric("Qty/AHU", f"{selected_record.qty_per_ahu:,.0f}")
             value_cols[1].metric("DHC", f"{selected_record.dhc_g:,.0f} g")
-            value_cols[2].metric("Mass Eff.", _format_efficiency(selected_record.mass_efficiency))
+            value_cols[2].metric("Mass Eff.", _format_efficiency(effective_efficiency))
             value_cols[3].metric("Avg DP", f"{selected_record.avg_dp_pa:,.0f} Pa")
             value_cols[4].metric("Final DP", f"{selected_record.final_dp_pa:,.0f} Pa")
             value_cols[5].metric("Price", f"{selected_record.price_vnd_filter:,.0f}")
+            st.caption(f"Mass efficiency source: {efficiency_source}")
 
             geometry_cols = st.columns(3)
             media_area = selected_record.media_area_m2 or _calculate_media_area_m2(
@@ -361,7 +385,7 @@ def render_scenario_editor(
             geometry_cols[1].metric("Height", f"{selected_record.height_mm:,.0f} mm")
             geometry_cols[2].metric("Media area/filter", f"{media_area:,.4f} m2")
 
-            edited_stages.append(_record_to_stage(selected_record))
+            edited_stages.append(_record_to_stage(selected_record, outdoor_environment))
 
     return Scenario(scenario.name, edited_stages)
 

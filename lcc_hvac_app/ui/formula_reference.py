@@ -16,6 +16,11 @@ FORMULA_REFERENCE = [
         "Unit": "g/day/filter",
     },
     {
+        "Result": "Estimated Mass Efficiency",
+        "Formula": "PM1 fraction x ePM1 + PM1-2.5 fraction x ePM2.5 + PM2.5-10 fraction x ePM10 + Coarse fraction x ISO Coarse",
+        "Unit": "%",
+    },
+    {
         "Result": "Dust to next stage",
         "Formula": "Dust entering - Dust captured",
         "Unit": "g/day/filter",

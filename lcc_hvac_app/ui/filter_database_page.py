@@ -11,6 +11,12 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Protection, Si
 from openpyxl.utils import get_column_letter
 from openpyxl.worksheet.datavalidation import DataValidation
 
+from lcc_hvac_app.engine.efficiency import (
+    DEFAULT_OUTDOOR_ENVIRONMENT,
+    effective_mass_efficiency,
+    environment_profile,
+    percent_for_display,
+)
 from lcc_hvac_app.engine.models import FilterDatabaseRecord
 
 
@@ -28,7 +34,12 @@ DATABASE_COLUMNS = [
     "initial_dp_pa",
     "avg_dp_pa",
     "final_dp_pa",
+    "epm1_percent",
+    "epm25_percent",
+    "epm10_percent",
+    "coarse_percent",
     "mass_efficiency",
+    "mass_efficiency_source",
     "price_vnd_filter",
     "notes",
 ]
@@ -47,7 +58,12 @@ DISPLAY_COLUMNS = {
     "initial_dp_pa": "Initial DP (Pa)",
     "avg_dp_pa": "Avg DP (Pa)",
     "final_dp_pa": "Final DP (Pa)",
+    "epm1_percent": "ePM1 %",
+    "epm25_percent": "ePM2.5 %",
+    "epm10_percent": "ePM10 %",
+    "coarse_percent": "ISO Coarse %",
     "mass_efficiency": "Mass Eff. %",
+    "mass_efficiency_source": "Mass Eff. Source",
     "price_vnd_filter": "Price/filter (VND)",
     "notes": "Notes",
 }
@@ -98,6 +114,25 @@ COLUMN_ALIASES = {
         "eurovent avg dp (pa)",
     ],
     "final_dp_pa": ["final dp", "final dp (pa)", "final pressure drop"],
+    "epm1_percent": ["epm1", "epm1 %", "epm1%", "iso epm1", "iso epm1 %"],
+    "epm25_percent": [
+        "epm2.5",
+        "epm2.5 %",
+        "epm2.5%",
+        "epm25",
+        "epm25 %",
+        "iso epm2.5",
+    ],
+    "epm10_percent": ["epm10", "epm10 %", "epm10%", "iso epm10", "iso epm10 %"],
+    "coarse_percent": [
+        "coarse",
+        "coarse %",
+        "coarse%",
+        "iso coarse",
+        "iso coarse %",
+        "arrestance",
+        "arrestance %",
+    ],
     "mass_efficiency": [
         "mass efficiency",
         "mass efficiency %",
@@ -107,6 +142,7 @@ COLUMN_ALIASES = {
         "efficiency",
         "eff",
     ],
+    "mass_efficiency_source": ["mass eff. source", "mass efficiency source", "efficiency source"],
     "price_vnd_filter": [
         "price/filter",
         "price/filter vnd",
@@ -148,6 +184,10 @@ def empty_display_row() -> dict[str, Any]:
             "Initial DP (Pa)",
             "Avg DP (Pa)",
             "Final DP (Pa)",
+            "ePM1 %",
+            "ePM2.5 %",
+            "ePM10 %",
+            "ISO Coarse %",
             "Mass Efficiency",
             "Mass Eff. %",
             "Price/filter",
@@ -164,6 +204,49 @@ def calculate_media_area_m2(width_mm: Any, height_mm: Any) -> float:
     if width <= 0 or height <= 0:
         return 0.0
     return round(width * height / 1_000_000, 4)
+
+
+def current_outdoor_environment() -> str:
+    project = st.session_state.get("project")
+    assumptions = getattr(project, "assumptions", None)
+    return getattr(assumptions, "outdoor_environment", DEFAULT_OUTDOOR_ENVIRONMENT)
+
+
+def calculate_effective_mass_efficiency_for_row(row: pd.Series | dict[str, Any]) -> tuple[float, str]:
+    source = str(row.get("Mass Eff. Source", "") or "")
+    direct = 0.0 if source.startswith("Estimated") else row.get("Mass Eff. %", 0.0)
+    epm1 = row.get("ePM1 %", 0.0)
+    epm25 = row.get("ePM2.5 %", 0.0)
+    epm10 = row.get("ePM10 %", 0.0)
+    coarse = row.get("ISO Coarse %", 0.0)
+    return effective_mass_efficiency(
+        direct,
+        epm1,
+        epm25,
+        epm10,
+        coarse,
+        current_outdoor_environment(),
+    )
+
+
+def recalculate_mass_efficiency_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
+    normalized = dataframe.copy()
+    for column in ["ePM1 %", "ePM2.5 %", "ePM10 %", "ISO Coarse %", "Mass Eff. %"]:
+        if column in normalized.columns:
+            normalized[column] = normalized[column].apply(_to_float)
+    if "Mass Eff. Source" not in normalized.columns:
+        normalized["Mass Eff. Source"] = ""
+    if "Mass Eff. %" not in normalized.columns:
+        return normalized
+    calculated_values: list[float] = []
+    sources: list[str] = []
+    for _, row in normalized.iterrows():
+        efficiency, source = calculate_effective_mass_efficiency_for_row(row)
+        calculated_values.append(round(efficiency * 100.0, 4) if source != "Missing" else 0.0)
+        sources.append(source)
+    normalized["Mass Eff. %"] = calculated_values
+    normalized["Mass Eff. Source"] = sources
+    return normalized
 
 
 def normalize_display_dataframe(dataframe: pd.DataFrame | None) -> pd.DataFrame:
@@ -202,6 +285,7 @@ def normalize_display_dataframe(dataframe: pd.DataFrame | None) -> pd.DataFrame:
             calculated if calculated > 0 and existing <= 0 else existing
             for calculated, existing in zip(calculated_area, current_area, strict=False)
         ]
+    normalized = recalculate_mass_efficiency_dataframe(normalized)
     return normalized
 
 
@@ -212,6 +296,7 @@ def recalculate_media_area_dataframe(dataframe: pd.DataFrame) -> pd.DataFrame:
             lambda row: calculate_media_area_m2(row["Width (mm)"], row["Height (mm)"]),
             axis=1,
         )
+    normalized = recalculate_mass_efficiency_dataframe(normalized)
     return normalized
 
 
@@ -328,7 +413,6 @@ def _missing_filter_record_fields(row: dict[str, Any]) -> list[str]:
         "Initial DP (Pa)",
         "Avg DP (Pa)",
         "Final DP (Pa)",
-        "Mass Eff. %",
         "Price/filter (VND)",
     ]
 
@@ -339,6 +423,10 @@ def _missing_filter_record_fields(row: dict[str, Any]) -> list[str]:
     for field_name in required_positive_fields:
         if _to_float(row.get(field_name, 0)) <= 0:
             missing.append(field_name)
+
+    mass_efficiency, _source = calculate_effective_mass_efficiency_for_row(row)
+    if mass_efficiency <= 0:
+        missing.append("Mass Eff. % or ePM/Coarse")
 
     return missing
 
@@ -436,12 +524,13 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             step=50.0,
             key=f"dhc_g_{form_key}",
         )
-        mass_efficiency = col12.number_input(
+        direct_mass_efficiency = col12.number_input(
             "Mass Eff. %",
             min_value=0.0,
             value=float(_row_value(selected_row, "Mass Eff. %", 0.0)),
             step=0.01,
             key=f"mass_efficiency_{form_key}",
+            help="Enter measured mass efficiency if available. If blank/zero, the app estimates it from ePM/Coarse below.",
         )
 
         col13, col14, col15 = st.columns(3)
@@ -467,15 +556,62 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             key=f"final_dp_{form_key}",
         )
 
-        col16, col17 = st.columns([1, 2])
-        price = col16.number_input(
+        col16, col17, col18, col19 = st.columns(4)
+        epm1_percent = col16.number_input(
+            "ePM1 %",
+            min_value=0.0,
+            max_value=100.0,
+            value=float(_row_value(selected_row, "ePM1 %", 0.0)),
+            step=1.0,
+            key=f"epm1_{form_key}",
+        )
+        epm25_percent = col17.number_input(
+            "ePM2.5 %",
+            min_value=0.0,
+            max_value=100.0,
+            value=float(_row_value(selected_row, "ePM2.5 %", 0.0)),
+            step=1.0,
+            key=f"epm25_{form_key}",
+        )
+        epm10_percent = col18.number_input(
+            "ePM10 %",
+            min_value=0.0,
+            max_value=100.0,
+            value=float(_row_value(selected_row, "ePM10 %", 0.0)),
+            step=1.0,
+            key=f"epm10_{form_key}",
+        )
+        coarse_percent = col19.number_input(
+            "ISO Coarse %",
+            min_value=0.0,
+            max_value=100.0,
+            value=float(_row_value(selected_row, "ISO Coarse %", 0.0)),
+            step=1.0,
+            key=f"coarse_{form_key}",
+        )
+
+        mass_efficiency, mass_efficiency_source = effective_mass_efficiency(
+            direct_mass_efficiency,
+            epm1_percent,
+            epm25_percent,
+            epm10_percent,
+            coarse_percent,
+            current_outdoor_environment(),
+        )
+        profile = environment_profile(current_outdoor_environment())
+        st.caption(
+            f"Effective Mass Eff.: {mass_efficiency * 100:,.2f}% ({mass_efficiency_source}) using {profile.label} dust profile."
+        )
+
+        col20, col21 = st.columns([1, 2])
+        price = col20.number_input(
             "Price/filter (VND)",
             min_value=0.0,
             value=float(_row_value(selected_row, "Price/filter (VND)", 0.0)),
             step=10000.0,
             key=f"price_{form_key}",
         )
-        notes = col17.text_input(
+        notes = col21.text_input(
             "Notes",
             value=str(_row_value(selected_row, "Notes")),
             key=f"notes_{form_key}",
@@ -495,7 +631,12 @@ def render_quick_add_filter_form(current_df: pd.DataFrame) -> None:
             "Initial DP (Pa)": initial_dp,
             "Avg DP (Pa)": avg_dp,
             "Final DP (Pa)": final_dp,
-            "Mass Eff. %": mass_efficiency,
+            "ePM1 %": epm1_percent,
+            "ePM2.5 %": epm25_percent,
+            "ePM10 %": epm10_percent,
+            "ISO Coarse %": coarse_percent,
+            "Mass Eff. %": mass_efficiency * 100.0,
+            "Mass Eff. Source": mass_efficiency_source,
             "Price/filter (VND)": price,
             "Notes": notes,
         }
@@ -548,7 +689,12 @@ def dataframe_to_records(dataframe: pd.DataFrame) -> list[FilterDatabaseRecord]:
                 initial_dp_pa=_to_float(row.get("initial_dp_pa", 0)),
                 avg_dp_pa=_to_float(row.get("avg_dp_pa", 0)),
                 final_dp_pa=_to_float(row.get("final_dp_pa", 0)),
+                epm1_percent=_to_float(row.get("epm1_percent", 0)),
+                epm25_percent=_to_float(row.get("epm25_percent", 0)),
+                epm10_percent=_to_float(row.get("epm10_percent", 0)),
+                coarse_percent=_to_float(row.get("coarse_percent", 0)),
                 mass_efficiency=_to_float(row.get("mass_efficiency", 0)),
+                mass_efficiency_source=str(row.get("mass_efficiency_source", "")).strip(),
                 price_vnd_filter=_to_float(row.get("price_vnd_filter", 0)),
                 notes=str(row.get("notes", "")).strip(),
             )
@@ -622,7 +768,8 @@ def normalize_uploaded_database(dataframe: pd.DataFrame) -> pd.DataFrame:
             normalized["height_mm"] = sizes["height"]
 
     if "qty_per_ahu" in normalized.columns:
-        normalized["qty_per_ahu"] = normalized["qty_per_ahu"].replace("", 1)
+        blank_qty = normalized["qty_per_ahu"].astype(str).str.strip() == ""
+        normalized.loc[blank_qty, "qty_per_ahu"] = 1
 
     for number_column in [
         "dhc_g",
@@ -633,12 +780,16 @@ def normalize_uploaded_database(dataframe: pd.DataFrame) -> pd.DataFrame:
         "initial_dp_pa",
         "avg_dp_pa",
         "final_dp_pa",
+        "epm1_percent",
+        "epm25_percent",
+        "epm10_percent",
+        "coarse_percent",
         "mass_efficiency",
         "price_vnd_filter",
     ]:
         normalized[number_column] = normalized[number_column].apply(_to_float)
 
-    return normalized.rename(columns=DISPLAY_COLUMNS)
+    return recalculate_media_area_dataframe(normalized.rename(columns=DISPLAY_COLUMNS))
 
 
 def read_excel_database(uploaded_file: Any, sheet_name: str) -> pd.DataFrame:
@@ -691,7 +842,12 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
         "Initial DP (Pa)": 15,
         "Avg DP (Pa)": 14,
         "Final DP (Pa)": 14,
+        "ePM1 %": 12,
+        "ePM2.5 %": 12,
+        "ePM10 %": 12,
+        "ISO Coarse %": 14,
         "Mass Eff. %": 13,
+        "Mass Eff. Source": 22,
         "Price/filter (VND)": 18,
         "Notes": 28,
     }
@@ -704,6 +860,10 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
         "Initial DP (Pa)": "0",
         "Avg DP (Pa)": "0",
         "Final DP (Pa)": "0",
+        "ePM1 %": "0.00",
+        "ePM2.5 %": "0.00",
+        "ePM10 %": "0.00",
+        "ISO Coarse %": "0.00",
         "Mass Eff. %": "0.00",
         "Price/filter (VND)": '#,##0 "VND"',
     }
@@ -721,13 +881,23 @@ def format_filter_database_worksheet(worksheet: Any) -> None:
         "Initial DP (Pa)": pressure_fill,
         "Avg DP (Pa)": pressure_fill,
         "Final DP (Pa)": pressure_fill,
+        "ePM1 %": pressure_fill,
+        "ePM2.5 %": pressure_fill,
+        "ePM10 %": pressure_fill,
+        "ISO Coarse %": pressure_fill,
         "Mass Eff. %": pressure_fill,
+        "Mass Eff. Source": optional_fill,
         "Price/filter (VND)": cost_fill,
         "Notes": optional_fill,
     }
     comments = {
         "Avg DP (Pa)": "Recommended formula: round(((Initial DP + Final DP) / 2) * 1.1).",
         "Stage": "Choose a filter stage from the dropdown list.",
+        "Mass Eff. %": "Used by LCC. If left blank in the app, it can be estimated from ePM/Coarse and Outdoor Environment.",
+        "ePM1 %": "Optional ISO 16890 value used to estimate Mass Eff. when direct Mass Eff. is not available.",
+        "ePM2.5 %": "Optional ISO 16890 value used to estimate Mass Eff. when direct Mass Eff. is not available.",
+        "ePM10 %": "Optional ISO 16890 value used to estimate Mass Eff. when direct Mass Eff. is not available.",
+        "ISO Coarse %": "Optional coarse arrestance value used to estimate Mass Eff. when direct Mass Eff. is not available.",
         "Price/filter (VND)": "Enter price for one filter, not total project price.",
     }
 
